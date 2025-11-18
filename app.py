@@ -106,24 +106,9 @@ with c3:
 with c4:
     if st.button("Deposit Check"):
         st.balloons()
-# Quick actions
-st.markdown("---")
-st.subheader("🚀 Quick Actions")
-c1, c2, c3, c4 = st.columns(4)
-with c1:
-    if st.button("Transfer Funds"):
-        st.success("Transfer initiated")
-with c2:
-    if st.button("Pay Bills"):
-        st.info("Opening bill payment center")
-with c3:
-    if st.button("View Investments"):
-        st.success("Portfolio loaded")
-with c4:
-    if st.button("Deposit Check"):
-        st.balloons()
 # Footer
 st.markdown("---")
 
 st.caption("This is a demonstration dashboard • All data is simulated for illustration purposes only.")
+
 
