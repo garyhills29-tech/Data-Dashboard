@@ -7,17 +7,18 @@ import pandas as pd
 st.set_page_config(page_title="Truist Online Banking - Educational Demo", page_icon="🏦", layout="wide")
 
 # ======================= STATE =========================
-defaults = {
-    "authenticated": False,
-    "otp_verified": False,
-    "checking": 12340.50,
-    "savings": 14911.32,
-    "crypto": {"BTC": 0.0420, "ETH": 3.21, "SOL": 42.0, "DOGE": 1337.0, "PEPE": 69696969.0, "GROK": 20250.0},
-    "transactions": []
-}
-for k, v in defaults.items():
-    if k not in st.session_state:
-        st.session_state[k] = v
+if "authenticated" not in st.session_state:
+    st.session_state.authenticated = False
+if "otp_verified" not in st.session_state:
+    st.session_state.otp_verified = False
+if "checking" not in st.session_state:
+    st.session_state.checking = 12340.50
+if "savings" not in st.session_state:
+    st.session_state.savings = 14911.32
+if "crypto" not in st.session_state:
+    st.session_state.crypto = {"BTC": 0.0420, "ETH": 3.21, "SOL": 42.0, "DOGE": 1337.0, "PEPE": 69696969.0, "GROK": 20250.0}
+if "transactions" not in st.session_state:
+    st.session_state.transactions = []
 
 # ======================= LIVE PRICES & CHARTS =========================
 @st.cache_data(ttl=60)
@@ -25,13 +26,11 @@ def get_crypto_data():
     coins = {"BTC": "bitcoin", "ETH": "ethereum", "SOL": "solana", "DOGE": "dogecoin", "PEPE": "pepe", "GROK": "grok"}
     prices = {}
     charts = {}
-    for symbol, id in coins.items():
+    for symbol, cid in coins.items():
         try:
-            # Price + 24h change
-            p = requests.get(f"https://api.coingecko.com/api/v3/simple/price?ids={id}&vs_currencies=usd&include_24hr_change=true").json()
-            prices[symbol] = {"price": p[id]["usd"], "change": p[id]["usd_24h_change"]}
-            # 30-day chart
-            c = requests.get(f"https://api.coingecko.com/api/v3/coins/{id}/market_chart?vs_currency=usd&days=30").json()
+            p = requests.get(f"https://api.coingecko.com/api/v3/simple/price?ids={cid}&vs_currencies=usd&include_24hr_change=true").json()
+            prices[symbol] = {"price": p[cid]["usd"], "change": p[cid]["usd_24h_change"]}
+            c = requests.get(f"https://api.coingecko.com/api/v3/coins/{cid}/market_chart?vs_currency=usd&days=30").json()
             df = pd.DataFrame(c["prices"], columns=["ts", "price"])
             df["date"] = pd.to_datetime(df["ts"], unit="ms")
             charts[symbol] = df.set_index("date")["price"]
@@ -57,77 +56,64 @@ st.markdown("""
 
 # ========================= FUNCTIONS =========================
 def show_warning(technique):
-    st.markdown(f"<div class='warning-banner'>🚨 PHISHING SIMULATION - EDUCATIONAL ONLY 🚨<br><b>Technique:</b> {technique}<br>No data is collected or stored</div>", unsafe_allow_html=True)
+    st.markdown(f"<div class='warning-banner'>🚨 PHISHING SIMULATION - EDUCATIONAL ONLY 🚨<br><b>Technique:</b> {technique}<br>No data collected</div>", unsafe_allow_html=True)
     st.balloons()
-    st.snow()
 
 def add_transaction(desc, amount):
-    st.session_state.transactions.insert(0, {
-        "date": datetime.now().strftime("%m-%d %H:%M"),
-        "desc": desc,
-        "amount": amount
-    })
+    st.session_state.transactions.insert(0, {"date": datetime.now().strftime("%m-%d %H:%M"), "desc": desc, "amount": amount})
 
 # ========================= PAGES =========================
 def login_page():
-    st.markdown("""
-    <div class='truist-header'>
-        <div style='font-size:100px'>🏦</div>
-        <h1 style='color:white'>Welcome to Truist Online Banking</h1>
-        <p style='color:#ffb700; font-size:24px'>Educational Phishing Awareness Demo — 2025</p>
-    </div>
-    """, unsafe_allow_html=True)
-    st.markdown("<div style='text-align:center; padding:50px; color:white; font-size:20px'>Enter anything below to continue (this is a demo)</div>", unsafe_allow_html=True)
+    st.markdown("<div class='truist-header'><div style='font-size:100px'>🏦</div><h1 style='color:white'>Welcome to Truist Online Banking</h1><p style='color:#ffb700'>Educational Demo — Enter anything to continue</p></div>", unsafe_allow_html=True)
     col1, col2 = st.columns(2)
     with col1:
         st.text_input("User ID", value="client001")
     with col2:
         st.text_input("Password", type="password", value="anything")
-    if st.button("Log In →", type="primary", use_container_width=True):
-        show_warning("Fake Banking Login Page — Credential Harvesting")
+    if st.button("Log In", type="primary", use_container_width=True):
+        show_warning("Fake Banking Login")
         st.session_state.authenticated = True
         st.rerun()
 
 def otp_page():
-    st.markdown("<h1 style='text-align:center; color:white'>🔐 Security Verification Required</h1>", unsafe_allow_html=True)
-    st.markdown("<p style='text-align:center; color:#ffb700; font-size:20px'>We sent a 6-digit code to **--7842</p>", unsafe_allow_html=True)
-    st.text_input("Enter 6-digit code", max_chars=6, placeholder="000000")
+    st.markdown("<h1 style='text-align:center;color:white'>🔐 Security Verification</h1><p style='text-align:center;color:#ffb700'>Code sent to **--7842</p>", unsafe_allow_html=True)
+    st.text_input("Enter code", placeholder="000000")
     if st.button("Verify", type="primary", use_container_width=True):
-        show_warning("2FA / OTP Interception Attack")
+        show_warning("2FA Interception")
         st.session_state.otp_verified = True
         st.rerun()
 
 def dashboard():
-    st.markdown("<h1 style='text-align:center;color:#ffb700'>Welcome Back, CLIENT001</h1><p style='text-align:center'><span class='recording-dot'></span> Session is being recorded</p>", unsafe_allow_html=True)
+    st.markdown("<h1 style='text-align:center;color:#ffb700'>Welcome Back</h1><p style='text-align:center'><span class='recording-dot'></span> Session recorded</p>", unsafe_allow_html=True)
     col1, col2, col3 = st.columns(3)
     with col1:
         st.metric("Checking", f"${st.session_state.checking:,.2f}")
     with col2:
         st.metric("Savings", f"${st.session_state.savings:,.2f}")
     with col3:
-        crypto_total = sum(st.session_state.crypto[c] * prices[c]["price"] for c in st.session_state.crypto)
-        st.metric("Crypto Portfolio", f"${crypto_total:,.2f}")
+        total_crypto = sum(st.session_state.crypto[c] * prices[c]["price"] for c in st.session_state.crypto)
+        st.metric("Crypto Value", f"${total_crypto:,.2f}")
 
     st.markdown("<h2 style='color:#ffb700'>Recent Transactions</h2>", unsafe_allow_html=True)
     if st.session_state.transactions:
-        df = pd.DataFrame(st.session_state.transactions[:15])
-        df["amount"] = df["amount"].apply(lambda x: f"<span style='color:green'>+${x:,.2f}</span>" if x > 0 else f"<span style='color:red'>-${-x:,.2f}</span>", )
-        st.markdown(df.to_html(escape=False, index=False), unsafe_allow_html=True)
+        df = pd.DataFrame(st.session_state.transactions[:10])
+        df["amount"] = df["amount"].apply(lambda x: f"+${x:,.2f}" if x > 0 else f"-${-x:,.2f}")
+        st.dataframe(df, use_container_width=True, hide_index=True)
     else:
-        st.info("No transactions yet — make some moves!")
+        st.info("No transactions yet")
 
 def transfer():
     st.markdown("<h1 style='text-align:center;color:#ffb700'>Transfer Funds</h1>", unsafe_allow_html=True)
     col1, col2 = st.columns(2)
     with col1:
-        from_acc = st.selectbox("From Account", ["Checking", "Savings"])
+        from_acc = st.selectbox("From", ["Checking", "Savings"])
     with col2:
-        to_acc = "Savings" if from_acc == "Checking" else "Checking")
-        amount = st.number_input("Amount", min_value=0.01, step=10.0)
+        to_acc = "Savings" if from_acc == "Checking" else "Checking"
+        amount = st.number_input("Amount", min_value=0.01, step=10.0, value=100.0)
     if st.button("Transfer Now", type="primary"):
         from_bal = st.session_state.checking if from_acc == "Checking" else st.session_state.savings
         if amount > from_bal:
-            st.error("Insufficient funds!")
+            st.error("Insufficient funds")
         else:
             if from_acc == "Checking":
                 st.session_state.checking -= amount
@@ -136,12 +122,12 @@ def transfer():
                 st.session_state.savings -= amount
                 st.session_state.checking += amount
             add_transaction(f"Transfer to {to_acc}", amount if to_acc == "Savings" else -amount)
-            st.success(f"Transferred ${amount:,.2f} to {to_acc}")
+            st.success(f"Transferred ${amount:,.2f}")
             st.balloons()
             st.rerun()
 
 def crypto_wallet():
-    st.markdown("<h1 style='text-align:center;color:#ffb700'>Crypto Wallet — Live Prices & Charts</h1>", unsafe_allow_html=True)
+    st.markdown("<h1 style='text-align:center;color:#ffb700'>Crypto Wallet - Live Charts</h1>", unsafe_allow_html=True)
     total = 0
     for symbol, amt in st.session_state.crypto.items():
         if amt > 0:
@@ -150,40 +136,40 @@ def crypto_wallet():
             total += val
             change = prices[symbol]["change"]
             color = "price-up" if change >= 0 else "price-down"
-            st.markdown(f"<div class='glass-card'><h3>{symbol} — {amt:,.6f} coins</h3><h2>${val:,.2f} <span class='{color}'>({change:+.2f}% 24h)</span></h2></div>", unsafe_allow_html=True)
-            st.line_chart(charts[symbol], use_container_width=True, height=300)
+            st.markdown(f"<div class='glass-card'><h3>{symbol} — {amt:,.6f}</h3><h2>${val:,.2f} <span class='{color}'>({change:+.2f}%)</span></h2></div>", unsafe_allow_html=True)
+            st.line_chart(charts[symbol], use_container_width=True)
 
     st.markdown(f"<div class='glass-card'><h2>Total Crypto Value: ${total:,.2f}</h2></div>", unsafe_allow_html=True)
 
-    st.markdown("### Buy / Sell Crypto")
     col1, col2, col3 = st.columns(3)
     with col1:
-        coin = st.selectbox("Select Coin", list(prices.keys()))
+        coin = st.selectbox("Coin", list(prices.keys()))
     with col2:
-        usd = st.number_input("USD Amount", min_value=100.0, min_value=1.0)
+        usd = st.number_input("USD Amount", min_value=1.0, value=100.0)
     with col3:
-        price = prices[coin]["price"]
-        if st.button("BUY 🟩", type="primary"):
+        if st.button("BUY 🟩"):
+            price = prices[coin]["price"]
             if usd > st.session_state.checking:
-                st.error("Not enough fiat!")
+                st.error("Not enough funds")
             else:
                 bought = usd / price
                 st.session_state.crypto[coin] += bought
                 st.session_state.checking -= usd
                 add_transaction(f"Bought {coin}", -usd)
-                st.success(f"Bought {bought:.6f} {coin}!")
+                st.success(f"Bought {bought:.6f} {coin}")
                 st.balloons()
                 st.rerun()
         if st.button("SELL 🟥"):
+            price = prices[coin]["price"]
             max_usd = st.session_state.crypto[coin] * price
             if usd > max_usd:
-                st.error("Not enough coins!")
+                st.error("Not enough coins")
             else:
                 sold = usd / price
                 st.session_state.crypto[coin] -= sold
                 st.session_state.checking += usd
                 add_transaction(f"Sold {coin}", +usd)
-                st.success(f"Sold {sold:.6f} {coin}!")
+                st.success(f"Sold {sold:.6f} {coin}")
                 st.balloons()
                 st.rerun()
 
@@ -208,7 +194,6 @@ else:
     elif page == "Crypto Wallet":
         crypto_wallet()
     elif page == "Transaction History":
-        st.markdown("<h2 style='color:#ffb700'>Transaction History</h2>", unsafe_allow_html=True)
         df = pd.DataFrame(st.session_state.transactions)
         if not df.empty:
             df["amount"] = df["amount"].apply(lambda x: f"+${x:,.2f}" if x > 0 else f"-${-x:,.2f}")
@@ -216,4 +201,4 @@ else:
         else:
             st.info("No transactions yet")
 
-st.caption("Red Team Educational Demo — November 18, 2025 — No real data collected — Built with ❤ by you & Grok"))
+st.caption("Red Team Educational Demo — November 18, 2025 — No real data collected")
