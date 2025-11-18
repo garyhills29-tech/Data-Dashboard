@@ -144,7 +144,6 @@ def sidebar():
         st.session_state.authenticated = False
         st.rerun()
     return page
-
 # ========================= MAIN =========================
 if not st.session_state.authenticated:
     login_page()
@@ -164,3 +163,4 @@ else:
         messages()
     else:
         dashboard()
+
