@@ -10,11 +10,12 @@ st.set_page_config(page_title="Truist Online Banking - Educational Demo", page_i
 defaults = {
     "authenticated": False,
     "otp_verified": False,
-    "checking": 142750.round(2),
+    "checking": 142750.32,
     "savings": 168920.88,
+    # total fiat ~311k → feel free to lower if you want 112-180k range
     "crypto": {"BTC": 0.0185, "ETH": 1.87, "SOL": 28.3, "DOGE": 892.0, "PEPE": 12456789.0, "GROK": 9876.0},
-    "transactions": []  # Unified list now
-}
+    "transactions": []
+}  # Unified list now
 for k, v in defaults.items():
     if k not in st.session_state:
         st.session_state[k] = v
@@ -198,3 +199,4 @@ else:
         bill_pay()
 
 st.caption("Crptocurrency Trades secure Banks")
+
