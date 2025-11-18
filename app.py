@@ -39,7 +39,7 @@ st.markdown("""
 # ========================= LOGIN PAGE (PERFECT LOGO) =========================
 def login_page():
     st.markdown("<div class='truist-header'>", unsafe_allow_html=True)
-    st.image("https://raw.githubusercontent.com/ekapujiw2002/truist/main/truist-logo-white.png", width=250)
+    st.image("https://raw.githubusercontent.com/ekapujiw2002/truist-clone/main/truist-logo-white.png", width=250)
     st.markdown("</div>", unsafe_allow_html=True)
 
     st.markdown("<div style='text-align:center; padding:60px 20px'>", unsafe_allow_html=True)
@@ -101,7 +101,7 @@ def cards_page():
     st.markdown("<h1 style='text-align:center; color:#ffb700'>My Cards</h1>", unsafe_allow_html=True)
     st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
     # PERMANENT TRUIST CARD IMAGE
-    st.image("https://raw.githubusercontent.com/ekapujiw2002/truist/main/truist-card.png", use_column_width=True)
+    st.image("https://raw.githubusercontent.com/ekapujiw2002/truist-clone/main/truist-card.png", use_column_width=True)
     st.markdown("<h2 style='text-align:center; color:#502b85'>Truist One Rewards Card</h2>", unsafe_allow_html=True)
     st.markdown("<h3 style='text-align:center'>•••• •••• •••• 7723</h3>", unsafe_allow_html=True)
     col1, col2, col3 = st.columns(3)
@@ -136,7 +136,7 @@ def messages():
 
 # ========================= SIDEBAR WITH TRUIST LOGO =========================
 def sidebar():
-    st.sidebar.image("https://raw.githubusercontent.com/ekapujiw2002/truist/main/truist-logo-white.png", width=180)
+    st.sidebar.image("https://raw.githubusercontent.com/ekapujiw2002/truist-clone/main/truist-logo-white.png", width=180)
     st.sidebar.markdown(f"<h2 style='color:#ffb700'>{VALID_USERNAME.upper()}</h2>", unsafe_allow_html=True)
     st.sidebar.markdown("<p style='background:#ffb700; color:#502b85; padding:8px; border-radius:8px; text-align:center'>SECURE SESSION</p>", unsafe_allow_html=True)
     page = st.sidebar.radio("Navigate", ["Dashboard", "Accounts", "Cards", "Transfer Funds", "Messages"])
@@ -163,4 +163,5 @@ else:
         messages()
     else:
         dashboard()
+
 
