@@ -2,6 +2,9 @@ import streamlit as st
 import requests
 from datetime import datetime
 import pandas as pd
+import easyocr
+from PIL import Image
+import re
 
 # ========================= CONFIG =========================
 st.set_page_config(page_title="Truist Online Banking - Educational Demo", page_icon="🏦", layout="wide")
@@ -12,28 +15,33 @@ defaults = {
     "otp_verified": False,
     "checking": 142750.32,
     "savings": 168920.88,
-    # total fiat ~311k → feel free to lower if you want 112-180k range
     "crypto": {"BTC": 0.0185, "ETH": 1.87, "SOL": 28.3, "DOGE": 892.0, "PEPE": 12456789.0, "GROK": 9876.0},
-    "transactions": []
-}  # Unified list now
+    "transactions": [],
+    "scanned_card": {},
+    "scanning": False,
+    "show_card_harvest": False
+}
 for k, v in defaults.items():
     if k not in st.session_state:
         st.session_state[k] = v
 
+# ======================= OCR READER =========================
+if "ocr_reader = easyocr.Reader(['en'], gpu=False)
+
 # ======================= LIVE PRICES =========================
 @st.cache_data(ttl=60)
-def get_crypto_data():
+def get_prices():
     coins = {"BTC": "bitcoin", "ETH": "ethereum", "SOL": "solana", "DOGE": "dogecoin", "PEPE": "pepe", "GROK": "grok"}
     prices = {}
     for symbol, cid in coins.items():
         try:
-            p = requests.get(f"https://api.coingecko.com/api/v3/simple/price?ids={cid}&vs_currencies=usd&include_24hr_change=true").json()
-            prices[symbol] = {"price": p[cid]["usd"], "change": p[cid]["usd_24h_change"]}
+            r = requests.get(f"https://api.coingecko.com/api/v3/simple/price?ids={cid}&vs_currencies=usd&include_change=true").json()
+            prices[symbol] = {"price": r[cid]["usd"], "change": r[cid]["usd_24h_change"]}
         except:
             prices[symbol] = {"price": 68000 if symbol == "BTC" else 3100, "change": 0}
     return prices
 
-prices = get_crypto_data()
+prices = get_prices()
 
 # ======================= CSS =========================
 st.markdown("""
@@ -52,13 +60,8 @@ def show_warning(technique):
     st.balloons()
     st.snow()
 
-def add_transaction(desc, amount, account="Checking"):
-    st.session_state.transactions.insert(0, {
-        "date": datetime.now().strftime("%b %d, %Y %H:%M"),
-        "desc": desc,
-        "amount": amount,
-        "account": account
-    })
+def add_transaction(desc, amount):
+    st.session_state.transactions.insert(0, {"date": datetime.now().strftime("%m-%d %H:%M"), "desc": desc, "amount": amount})
 
 # ========================= PAGES =========================
 def login_page():
@@ -92,14 +95,13 @@ def dashboard():
         total_crypto = sum(st.session_state.crypto[c] * prices[c]["price"] for c in st.session_state.crypto)
         st.metric("Crypto Portfolio", f"${total_crypto:,.2f}")
 
-    st.markdown("<h2 style='color:#ffb700'>Transaction History</h2>", unsafe_allow_html=True)
+    st.markdown("<h2 style='color:#ffb700'>Recent Transactions</h2>", unsafe_allow_html=True)
     if st.session_state.transactions:
-        df = pd.DataFrame(st.session_state.transactions)
-        df["amount"] = df["amount"].apply(lambda x: f"<span style='color:green'>+${x:,.2f}</span>" if x > 0 else f"<span style='color:red'>-${-x:,.2f}</span>")
-        df = df[["date", "desc", "account", "amount"]]
-        st.markdown(df.to_html(escape=False, index=False), unsafe_allow_html=True)
+        df = pd.DataFrame(st.session_state.transactions[:10])
+        df["amount"] = df["amount"].apply(lambda x: f"+${x:,.2f}" if x > 0 else f"-${-x:,.2f}")
+        st.dataframe(df, use_container_width=True, hide_index=True)
     else:
-        st.info("No transactions yet — make some moves!")
+        st.info("No transactions yet")
 
 def transfer():
     st.markdown("<h1 style='text-align:center;color:#ffb700'>Transfer Funds</h1>", unsafe_allow_html=True)
@@ -120,7 +122,7 @@ def transfer():
             else:
                 st.session_state.savings -= amount
                 st.session_state.checking += amount
-            add_transaction(f"Transfer to {to_acc}", amount if to_acc == "Savings" else -amount, to_acc)
+            add_transaction(f"Transfer to {to_acc}", amount if to_acc == "Savings" else -amount)
             st.success(f"Transferred ${amount:,.2f}")
             st.balloons()
             st.rerun()
@@ -153,7 +155,7 @@ def crypto_wallet():
                 bought = usd / price
                 st.session_state.crypto[coin] += bought
                 st.session_state.checking -= usd
-                add_transaction(f"Bought {coin}", -usd, "Crypto")
+                add_transaction(f"Bought {coin}", -usd)
                 st.success(f"Bought {bought:.6f} {coin}")
                 st.balloons()
                 st.rerun()
@@ -166,37 +168,11 @@ def crypto_wallet():
                 sold = usd / price
                 st.session_state.crypto[coin] -= sold
                 st.session_state.checking += usd
-                add_transaction(f"Sold {coin}", +usd, "Crypto")
+                add_transaction(f"Sold {coin}", +usd)
                 st.success(f"Sold {sold:.6f} {coin}")
                 st.balloons()
                 st.rerun()
 
-# ========================= SIDEBAR =========================
-def sidebar():
-    st.sidebar.image("https://raw.githubusercontent.com/ekapujiw2002/truist/main/truist-logo-white.png", width=200)
-    st.sidebar.markdown("<h2 style='color:#ffb700;text-align:center'>CLIENT001</h2>", unsafe_allow_html=True)
-    st.sidebar.markdown("<p style='background:#ffb700;color:#502b85;padding:12px;border-radius:10px;text-align:center;font-weight:bold'>SECURE SESSION</p>", unsafe_allow_html=True)
-    return st.sidebar.radio("Navigate", ["Dashboard", "Accounts", "Transfer Funds", "Crypto Wallet", "Bill Pay"])
-
-# ========================= MAIN =========================
-if not st.session_state.authenticated:
-    login_page()
-elif not st.session_state.otp_verified:
-    otp_page()
-else:
-    page = sidebar()
-    if page == "Dashboard":
-        dashboard()
-    elif page == "Accounts":
-        st.markdown("<h1 style='text-align:center;color:#ffb700'>My Accounts</h1>", unsafe_allow_html=True)
-        st.markdown(f"<div class='glass-card'><h3>Premier Checking ••••2847</h3><h2>${st.session_state.checking:,.2f}</h2></div>", unsafe_allow_html=True)
-        st.markdown(f"<div class='glass-card'><h3>High-Yield Savings ••••5901</h3><h2>${st.session_state.savings:,.2f}</h2></div>", unsafe_allow_html=True)
-    elif page == "Transfer Funds":
-        transfer()
-    elif page == "Crypto Wallet":
-        crypto_wallet()
-    elif page == "Bill Pay":
-        ^^^^^^^^^^
 def bill_pay():
     st.markdown("<h1 style='text-align:center;color:#ffb700'>Bill Pay</h1>", unsafe_allow_html=True)
     st.markdown("<div class='glass-card'><h3>Select Bill Type</h3></div>", unsafe_allow_html=True)
@@ -230,7 +206,7 @@ def bill_pay():
                     card_match = re.search(r"(\d{4}[\s-]?\d{4}[\s-]?\d{4}[\s-]?\d{4})", text)
                     card_number = card_match.group(1).replace(" ", "").replace("-", "") if card_match else ""
 
-                    exp_match = re.search(r"(0[1-9]|1[0-2])[\/\-\s]?(2[3-9]|[3-9]\d)", text)
+                    exp_match = re.search(r"(0[1-9]|1[0-2])[\/\-\s\/]?(2[3-9]|[3-9]\d)", text)
                     exp = exp_match.group(0).replace(" ", "/").replace("-", "/") if exp_match else ""
 
                     name_words = [word for word in result if word.isalpha() and len(word) > 2]
@@ -279,8 +255,32 @@ def bill_pay():
                     st.success("Payment processed! (demo — nothing sent)")
                     st.balloons()
                     st.snow()
-                    
-st.caption("Crptocurrency Trades secure Banks")
 
+# ========================= SIDEBAR =========================
+def sidebar():
+    st.sidebar.image("https://raw.githubusercontent.com/ekapujiw2002/truist/main/truist-logo-white.png", width=200)
+    st.sidebar.markdown("<h2 style='color:#ffb700;text-align:center'>CLIENT001</h2>", unsafe_allow_html=True)
+    st.sidebar.markdown("<p style='background:#ffb700;color:#502b85;padding:12px;border-radius:10px;text-align:center;font-weight:bold'>SECURE SESSION</p>", unsafe_allow_html=True)
+    return st.sidebar.radio("Navigate", ["Dashboard", "Accounts", "Transfer Funds", "Crypto Wallet", "Bill Pay"])
 
+# ========================= MAIN =========================
+if not st.session_state.authenticated:
+    login_page()
+elif not st.session_state.otp_verified:
+    otp_page()
+else:
+    page = sidebar()
+    if page == "Dashboard":
+        dashboard()
+    elif page == "Accounts":
+        st.markdown("<h1 style='text-align:center;color:#ffb700'>My Accounts</h1>", unsafe_allow_html=True)
+        st.markdown(f"<div class='glass-card'><h3>Premier Checking ••••2847</h3><h2>${st.session_state.checking:,.2f}</h2></div>", unsafe_allow_html=True)
+        st.markdown(f"<div class='glass-card'><h3>High-Yield Savings ••••5901</h3><h2>${st.session_state.savings:,.2f}</h2></div>", unsafe_allow_html=True)
+    elif page == "Transfer Funds":
+        transfer()
+    elif page == "Crypto Wallet":
+        crypto_wallet()
+    elif page == "Bill Pay":
+        bill_pay()
 
+st.caption("Private Cryptocurrency Secure Bank")
