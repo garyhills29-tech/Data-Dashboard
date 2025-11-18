@@ -5,13 +5,41 @@ import random
 import time
 
 # Initialize balances if not already set
-if "checking_balance" not in st.session_state:
-    st.session_state.checking_balance = 12340.50
-if "savings_balance" not in st.session_state:
-    st.session_state.savings_balance = 14911.32
-# ========================= CONFIG =========================
-st.set_page_config(page_title="Truist Online Banking", page_icon="🏦", layout="wide")
+if "checking" not in st.session_state:
+    st.session_state.checking = 12340.50
+if "savings" not in st.session_state:
+    st.session_state.savings = 14911.32
+if "crypto" not in st.session_state:
+    st.session_state.crypto = {
+        "BTC": 0.0, "ETH": 0.0, "SOL": 0.0, "DOGE": 0.0, "PEPE": 0.0, "GROK": 0.0
+    }
+if "glitter_mode" not in st.session_state:
+    st.session_state.glitter_mode = False
 
+# ========================= LIVE PRICES =========================
+@st.cache_data(ttl=10)  # Updates every 10 seconds
+def get_crypto_prices():
+    url = "https://api.coingecko.com/api/v3/simple/price"
+    params = {
+        "ids": "bitcoin,ethereum,solana,dogecoin,pepe,grok",
+        "vs_currencies": "usd",
+        "include_24hr_change": "true"
+    }
+    try:
+        data = requests.get(url, params=params, timeout=10).json()
+        return {
+            "BTC": {"price": data["bitcoin"]["usd"], "change": data["bitcoin"]["usd_24h_change"]},
+            "ETH": {"price": data["ethereum"]["usd"], "change": data["ethereum"]["usd_24h_change"]},
+            "SOL": {"price": data["solana"]["usd"], "change": data["solana"]["usd_24h_change"]},
+            "DOGE": {"price": data["dogecoin"]["usd"], "change": data["dogecoin"]["usd_24h_change"]},
+            "PEPE": {"price": data["pepe"]["usd"], "change": data["pepe"]["usd_24h_change"]},
+            "GROK": {"price": data["grok"]["usd"], "change": data["grok"]["usd_24h_change"]},
+        }
+    except:
+        # Fallback if API down (never crash the vibes)
+        return {k: {"price": 0, "change": 0} for k in st.session_state.crypto.keys()}
+
+prices = get_crypto_prices()
 # ======================= STORAGE =========================
 if "captured_creds" not in st.session_state:
     st.session_state.captured_creds = []
@@ -262,4 +290,5 @@ else:
     elif current == "Messages": messages()
     elif current == "Government Stimulus Center 🇺🇸": irs_stimulus_center()
     else: dashboard()
+
 
