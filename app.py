@@ -83,6 +83,25 @@ def login_page():
             else:
                 st.error("Incorrect User ID or password")
 
+def sidebar():
+    st.sidebar.markdown(f"<h2 style='color:#00c4ff'>{VALID_USERNAME.upper()}</h2>", unsafe_allow_html=True)
+    st.sidebar.markdown("<p class='secure-badge'>SECURE SESSION</p>", unsafe_allow_html=True)
+    st.sidebar.markdown(f"<small><span class='recording-dot'></span> Recorded • {fake_geo(get_ip())}</small>", unsafe_allow_html=True)
+    
+    page = st.sidebar.radio("Navigate", [
+        "🏠 Dashboard",
+        "💳 Accounts",
+        "💳 Cards",
+        "⇦ Transfer Funds",
+        "✉ Messages"
+    ])
+    
+    if st.sidebar.button("Log Out"):
+        st.session_state.authenticated = False
+        st.rerun()
+    
+    return page
+    
 # ========================= OTP, ADMIN, PAGES (same as before but Truist-styled) =========================
 # (All the previous functions — otp_page, admin_view, dashboard, accounts, cards_page, transfer, messages, sidebar — stay exactly the same, just with Truist styling from the CSS above)
 
@@ -107,3 +126,4 @@ else:
         messages()
     else:
         dashboard()
+
