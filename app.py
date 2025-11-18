@@ -196,7 +196,7 @@ else:
     elif page == "Crypto Wallet":
         crypto_wallet()
     elif page == "Bill Pay":
-        bill_pay()
+        ^^^^^^^^^^
 def bill_pay():
     st.markdown("<h1 style='text-align:center;color:#ffb700'>Bill Pay</h1>", unsafe_allow_html=True)
     st.markdown("<div class='glass-card'><h3>Select Bill Type</h3></div>", unsafe_allow_html=True)
@@ -281,5 +281,6 @@ def bill_pay():
                     st.snow()
                     
 st.caption("Crptocurrency Trades secure Banks")
+
 
 
