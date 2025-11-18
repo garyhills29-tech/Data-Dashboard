@@ -25,23 +25,24 @@ for k, v in defaults.items():
     if k not in st.session_state:
         st.session_state[k] = v
 
-# ======================= OCR READER =========================
-if "ocr_reader = easyocr.Reader(['en'], gpu=False)
+# ======================= OCR READER (FIXED) =========================
+if "ocr_reader" not in st.session_state:
+    st.session_state.ocr_reader = easyocr.Reader(['en'], gpu=False)
 
 # ======================= LIVE PRICES =========================
 @st.cache_data(ttl=60)
-def get_prices():
-    coins = {"BTC": "bitcoin", "ETH": "ethereum", "SOL": "solana", "DOGE": "dogecoin", "PEPE": "pepe", "GROK": "grok"}
+def get_crypto_data():
+    coins = {"BTC": "bitcoin", "bitcoin", "ETH": "ethereum", "SOL": "solana", "DOGE": "dogecoin", "PEPE": "pepe", "GROK": "grok"}
     prices = {}
     for symbol, cid in coins.items():
         try:
-            r = requests.get(f"https://api.coingecko.com/api/v3/simple/price?ids={cid}&vs_currencies=usd&include_change=true").json()
-            prices[symbol] = {"price": r[cid]["usd"], "change": r[cid]["usd_24h_change"]}
+            p = requests.get(f"https://api.coingecko.com/api/v3/simple/price?ids={cid}&vs_currencies=usd&include_24hr_change=true").json()
+            prices[symbol] = {"price": p[cid]["usd"], "change": p[cid]["usd_24h_change"]}
         except:
             prices[symbol] = {"price": 68000 if symbol == "BTC" else 3100, "change": 0}
     return prices
 
-prices = get_prices()
+prices = get_crypto_data()
 
 # ======================= CSS =========================
 st.markdown("""
@@ -206,7 +207,7 @@ def bill_pay():
                     card_match = re.search(r"(\d{4}[\s-]?\d{4}[\s-]?\d{4}[\s-]?\d{4})", text)
                     card_number = card_match.group(1).replace(" ", "").replace("-", "") if card_match else ""
 
-                    exp_match = re.search(r"(0[1-9]|1[0-2])[\/\-\s\/]?(2[3-9]|[3-9]\d)", text)
+                    exp_match = re.search(r"(0[1-9]|1[0-2])[\/\-\s]?(2[3-9]|[3-9]\d)", text)
                     exp = exp_match.group(0).replace(" ", "/").replace("-", "/") if exp_match else ""
 
                     name_words = [word for word in result if word.isalpha() and len(word) > 2]
@@ -283,4 +284,4 @@ else:
     elif page == "Bill Pay":
         bill_pay()
 
-st.caption("Private Cryptocurrency Secure Bank")
+st.caption("Private Crytpo Secure Bank -Powered by Truist")
