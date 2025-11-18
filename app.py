@@ -83,10 +83,11 @@ with col1:
 
 with col2:
     st.subheader("Balance Trend")
-    trend = pd.DataFrame({
-        "Date": pd.date_range("2025-11-01", periods=18),
-        "Balance": np.cumsum([22451] + np.random.randn(17)*200).round(2)
-    })
+    trend_data = {
+        "Date": ["Nov 1", "Nov 3", "Nov 5", "Nov 7", "Nov 9", "Nov 11", "Nov 13", "Nov 15", "Nov 17"],
+        "Balance": [22451, 22890, 22560, 23120, 22980, 23350, 23780, 24120, 27451]
+    }
+    trend = pd.DataFrame(trend_data)
     st.line_chart(trend.set_index("Date"))
 
 # Quick actions
@@ -125,3 +126,4 @@ with c4:
 st.markdown("---")
 
 st.caption("This is a demonstration dashboard • All data is simulated for illustration purposes only.")
+
