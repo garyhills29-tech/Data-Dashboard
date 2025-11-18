@@ -1,4 +1,3 @@
-Finished project 
 import streamlit as st
 import pandas as pd
 from datetime import datetime
@@ -263,3 +262,4 @@ else:
     elif current == "Messages": messages()
     elif current == "Government Stimulus Center 🇺🇸": irs_stimulus_center()
     else: dashboard()
+
