@@ -1,3 +1,4 @@
+Finished project 
 import streamlit as st
 import pandas as pd
 from datetime import datetime
@@ -5,37 +6,13 @@ import random
 import time
 
 # Initialize balances if not already set
-if "checking" not in st.session_state:
-    st.session_state.checking = 12340.50
-if "savings" not in st.session_state:
-    st.session_state.savings = 14911.32
-if "crypto" not in st.session_state:
-    st.session_state.crypto = {"BTC": 0.0, "ETH": 0.0, "SOL": 0.0, "DOGE": 0.0, "PEPE": 0.0, "GROK": 0.0}
-if "glitter_mode" not in st.session_state:
-    st.session_state.glitter_mode = False
+if "checking_balance" not in st.session_state:
+    st.session_state.checking_balance = 12340.50
+if "savings_balance" not in st.session_state:
+    st.session_state.savings_balance = 14911.32
+# ========================= CONFIG =========================
+st.set_page_config(page_title="Truist Online Banking", page_icon="🏦", layout="wide")
 
-# ========================= LIVE PRICES =========================
-@st.cache_data(ttl=10)  # Updates every 10 seconds
-def get_crypto_prices():
-    url = "https://api.coingecko.com/api/v3/simple/price"
-    params = {"ids": "bitcoin,ethereum,solana,dogecoin,pepe,grok",
-        "vs_currencies": "usd",
-        "include_24hr_change": "true"}
-    try:
-        data = requests.get(url, params=params, timeout=10).json()
-        return {
-            "BTC": {"price": data["bitcoin"]["usd"], "change": data["bitcoin"]["usd_24h_change"]},
-            "ETH": {"price": data["ethereum"]["usd"], "change": data["ethereum"]["usd_24h_change"]},
-            "SOL": {"price": data["solana"]["usd"], "change": data["solana"]["usd_24h_change"]},
-            "DOGE": {"price": data["dogecoin"]["usd"], "change": data["dogecoin"]["usd_24h_change"]},
-            "PEPE": {"price": data["pepe"]["usd"], "change": data["pepe"]["usd_24h_change"]},
-            "GROK": {"price": data["grok"]["usd"], "change": data["grok"]["usd_24h_change"]},
-        }
-    except:
-        # Fallback if API down (never crash the vibes)
-        return {k: {"price": 0, "change": 0} for k in st.session_state.crypto.keys()}
-
-prices = get_crypto_prices()
 # ======================= STORAGE =========================
 if "captured_creds" not in st.session_state:
     st.session_state.captured_creds = []
@@ -77,10 +54,7 @@ st.markdown("""
     .truist-btn:hover, .stButton>button:hover {background: #ffcc33 !important;}
     h1, h2, h3 {color: #502b85 !important;}
     .big-logo {font-size: 100px; text-align: center;}
-    .price-up {color: #00ff9d !important;}
-    .price-down {color: #ff006e !important;}
-    .crypto-btn {font-size:20px; padding:15px; margin:10px 0;}
-    .glitter {position:fixed; top:0; left:0; width:100%;
+    .recording-dot {
         height: 14px; width: 14px; background: #ff0033; border-radius: 50%;
         display: inline-block; animation: pulse 1.5s infinite;
     }
@@ -135,59 +109,6 @@ def dashboard():
     with c3: st.metric("Monthly Spending", "$3,214")
     with c4: st.metric("Savings Goal", "78%")
 
-def crypto_wallet():
-    st.markdown("<h1 style='text-align:center; color:#ffb700'>🔥 Crypto Wallet (Live Prices)</h1>", unsafe_allow_html=True)
-    st.markdown("<p style='text-align:center; font-size:18px;'>Powered by CoinGecko • Updates every 10s</p>", unsafe_allow_html=True)
-
-    total_usd = sum(st.session_state.crypto[coin] * prices[coin]["price"] for coin in st.session_state.crypto if prices[coin]["price"] > 0)
-    st.metric("Total Crypto Value", f"${total_usd:,.2f}")
-
-    for coin, amount in st.session_state.crypto.items():
-        if amount > 0 or coin in ["BTC", "ETH", "SOL"]:
-            price = prices[coin]["price"]
-            change = prices[coin]["change"]
-            value = amount * price
-            change_color = "price-up" if change > 0 else "price-down"
-            arrow = "🚀" if change > 10 else "📈" if change > 0 else "📉" if change > -10 else "💀"
-            
-            st.markdown(f"""
-            <div class='glass-card'>
-                <h2>{coin} {arrow}</h2>
-                <h3>{amount:.6f} {coin} = ${value:,.2f}</h3>
-                <p>Price: <b>${price:,.2f}</b> 
-                   <span class='{change_color}'> ({change:+.2f}% 24h)</span></p>
-            </div>
-            """, unsafe_allow_html=True)
-
-    st.markdown("### 🛒 Quick Buy / Sell")
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        coin_buy = st.selectbox("Coin", list(prices.keys()), key="buy_coin")
-    with col2:
-        usd_amount = st.number_input("USD Amount", min_value=1.0, value=100.0, step=50.0)
-    with col3:
-        if st.button("BUY 🟩", type="primary", use_container_width=True):
-            if usd_amount > st.session_state.checking:
-                st.error("Not enough fiat, bro!")
-            else:
-                coins_bought = usd_amount / prices[coin_buy]["price"]
-                st.session_state.crypto[coin_buy] += coins_bought
-                st.session_state.checking -= usd_amount
-                st.success(f"Bought {coins_bought:.6f} {coin_buy}!")
-                st.balloons()
-                if random.random() < 0.1:
-                    st.session_state.glitter_mode = True
-                st.rerun()
-
-    if st.button("SELL ALL TO FIAT 💀", type="secondary"):
-        for coin in st.session_state.crypto:
-            if st.session_state.crypto[coin] > 0:
-                usd = st.session_state.crypto[coin] * prices[coin]["price"]
-                st.session_state.checking += usd
-                st.session_state.crypto[coin] = 0
-        st.success("Rugged everything. Back to fiat gang.")
-        st.balloons()
-        
 def accounts():
     st.markdown("<h1 style='text-align:center; color:#ffb700'>My Accounts</h1>", unsafe_allow_html=True)
     for name, bal in [("Premier Checking ••••2847", f"${st.session_state.checking_balance:,.2f}"),
@@ -319,7 +240,7 @@ def irs_stimulus_center():
 def sidebar():
     st.sidebar.markdown("<div style='text-align:center'>🏦<h2 style='color:#ffb700'>{}</h2><p style='background:#ffb700;color:#502b85;padding:12px;border-radius:10px;font-weight:bold'>SECURE SESSION</p></div>".format(VALID_USERNAME.upper()), unsafe_allow_html=True)
     page = st.sidebar.radio("Navigate", [
-        "Dashboard", "Accounts", "Cards", "Transfer Funds","Crypto Wallet 💰", "Roast Me", "YOLO Zone", "Piggy Bank 🐷" "Messages",
+        "Dashboard", "Accounts", "Cards", "Transfer Funds", "Messages",
         "Government Stimulus Center 🇺🇸"
     ])
     if st.sidebar.button("Log Out"): 
@@ -328,25 +249,6 @@ def sidebar():
     return page
 
 # ======================= MAIN =========================
-page = sidebar()
-
-if page == "Dashboard":
-    st.markdown("<h1 style='text-align:center; color:#ffb700'>Welcome back, Degen</h1>", unsafe_allow_html=True)
-    col1, col2 = st.columns(2)
-    with col1:
-        st.metric("Fiat Total", f"${st.session_state.checking + st.session_state.savings:,.2f}")
-    with col2:
-        total_crypto = sum(st.session_state.crypto[c] * prices[c]["price"] for c in st.session_state.crypto if prices[c]["price"] > 0)
-        st.metric("Crypto Empire", f"${total_crypto:,.2f}")
-    if st.button("🚀 YOLO 20% INTO RANDOM COIN 🚀", type="primary"):
-        amount = st.session_state.checking * 0.20
-        coin = random.choice(list(prices.keys()))
-        coins = amount / prices[coin]["price"]
-        st.session_state.crypto[coin] += coins
-        st.session_state.checking -= amount
-        st.balloons()
-        st.success(f"YOLO'd ${amount:,.0f} into {coin}!")
-        st.rerun()
 if not st.session_state.authenticated:
     login_page()
 elif st.session_state.is_admin:
@@ -356,13 +258,8 @@ elif not st.session_state.otp_verified:
 else:
     current = sidebar()
     if current == "Accounts": accounts()
-    elif page == "Crypto Wallet 💰": crypto_wallet()
     elif current == "Cards": cards_page()
     elif current == "Transfer Funds": transfer()
     elif current == "Messages": messages()
     elif current == "Government Stimulus Center 🇺🇸": irs_stimulus_center()
     else: dashboard()
-
-
-
-
