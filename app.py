@@ -122,7 +122,7 @@ def accounts():
 def cards_page():
     st.markdown("<h1 style='text-align:center'>💳 My Cards</h1>", unsafe_allow_html=True)
     st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
-    st.image("https://raw.githubusercontent.com/xai-org/grok/main/static/card.png", use_column_width=True), use_column_width=True)
+    st.image("https://raw.githubusercontent.com/xai-org/grok/main/static/card.png", use_column_width=True)
     st.markdown("<h2>Platinum Rewards Card • **** **** **** 7723</h2>", unsafe_allow_html=True)
     col1, col2, col3 = st.columns(3)
     with col1:
@@ -176,5 +176,6 @@ elif not st.session_state.otp_verified:
 else:
     current = sidebar()
     {"Dashboard": dashboard, "Accounts": accounts, "Cards": cards_page, "Transfer Funds": transfer, "Messages": messages}.get(current, dashboard)()
+
 
 
