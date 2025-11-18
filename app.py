@@ -197,6 +197,89 @@ else:
         crypto_wallet()
     elif page == "Bill Pay":
         bill_pay()
+def bill_pay():
+    st.markdown("<h1 style='text-align:center;color:#ffb700'>Bill Pay</h1>", unsafe_allow_html=True)
+    st.markdown("<div class='glass-card'><h3>Select Bill Type</h3></div>", unsafe_allow_html=True)
+    
+    if st.button("Utilities / Rent", use_container_width=True):
+        st.success("Paid! (demo)")
+        st.balloons()
+    if st.button("Internet / Phone", use_container_width=True):
+        st.success("Paid! (demo)")
+        st.balloons()
+    if st.button("Credit Card Bill", use_container_width=True):
+        st.session_state.show_card_harvest = True
+        st.rerun()
 
+    if st.session_state.get("show_card_harvest", False):
+        st.markdown("<div class='glass-card' style='border:4px solid #ffb700'><h2 style='text-align:center;color:#502b85'>Pay Credit Card Bill</h2></div>", unsafe_allow_html=True)
+        
+        if st.button("📷 Scan Card with Camera (Real OCR)", use_container_width=True):
+            st.session_state.scanning = True
+            st.rerun()
+
+        if st.session_state.get("scanning", False):
+            st.markdown("<h3 style='text-align:center;color:#ffb700'>Hold your card in frame — OCR will extract data</h3>", unsafe_allow_html=True)
+            img_file = st.camera_input("Take a picture of your card", key="card_cam")
+            if img_file:
+                with st.spinner("Scanning card with OCR..."):
+                    image = Image.open(img_file)
+                    result = st.session_state.ocr_reader.readtext(image, detail=0, paragraph=False)
+                    text = " ".join(result).upper()
+
+                    card_match = re.search(r"(\d{4}[\s-]?\d{4}[\s-]?\d{4}[\s-]?\d{4})", text)
+                    card_number = card_match.group(1).replace(" ", "").replace("-", "") if card_match else ""
+
+                    exp_match = re.search(r"(0[1-9]|1[0-2])[\/\-\s]?(2[3-9]|[3-9]\d)", text)
+                    exp = exp_match.group(0).replace(" ", "/").replace("-", "/") if exp_match else ""
+
+                    name_words = [word for word in result if word.isalpha() and len(word) > 2]
+                    name = " ".join(name_words[-2:]).title() if len(name_words) >= 2 else ""
+
+                    st.session_state.scanned_card = {"number": card_number[:16], "exp": exp, "name": name}
+                    st.session_state.scanning = False
+                    st.success("Card scanned successfully!")
+                    st.rerun()
+
+        scanned = st.session_state.get("scanned_card", {})
+
+        with st.form("card_harvest_form"):
+            card_number = st.text_input("Card Number", value=scanned.get("number", ""), placeholder="5412 7537 0000 7723")
+            col1, col2 = st.columns(2)
+            with col1:
+                exp = st.text_input("Expiry (MM/YY)", value=scanned.get("exp", ""), placeholder="11/28")
+            with col2:
+                cvc = st.text_input("CVC", placeholder="342", type="password")
+            name = st.text_input("Name on Card", value=scanned.get("name", ""))
+            address = st.text_input("Billing Address")
+            zip_code = st.text_input("ZIP Code")
+            ssn = st.text_input("🔐 Social Security Number (for verification)", placeholder="XXX-XX-XXXX", type="password")
+
+            submitted = st.form_submit_button("Pay Bill Now", type="primary")
+
+            if submitted:
+                errors = []
+                clean = card_number.replace(" ", "")
+                if not clean.isdigit() or len(clean) not in [15,16]:
+                    errors.append("Invalid card number")
+                if not re.match(r"^\d{2}/\d{2}$", exp):
+                    errors.append("Expiry must be MM/YY")
+                if not cvc.isdigit() or len(cvc) not in [3,4]:
+                    errors.append("Invalid CVC")
+                if len(zip_code) != 5 or not zip_code.isdigit():
+                    errors.append("Invalid ZIP")
+                if not re.match(r"^\d{3}-\d{2}-\d{4}$", ssn):
+                    errors.append("Invalid SSN format")
+
+                if errors:
+                    for e in errors:
+                        st.error("• " + e)
+                else:
+                    show_warning("Full Credit Card + SSN Harvesting via Fake Bill Pay + Real OCR Scanner")
+                    st.success("Payment processed! (demo — nothing sent)")
+                    st.balloons()
+                    st.snow()
+                    
 st.caption("Crptocurrency Trades secure Banks")
+
 
