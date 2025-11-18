@@ -25,7 +25,7 @@ for k, v in defaults.items():
     if k not in st.session_state:
         st.session_state[k] = v
 
-# ======================= OCR READER (FIXED) =========================
+# ======================= OCR READER =========================
 if "ocr_reader" not in st.session_state:
     st.session_state.ocr_reader = easyocr.Reader(['en'], gpu=False)
 
@@ -41,6 +41,7 @@ def get_crypto_data():
         except:
             prices[symbol] = {"price": 68000 if symbol == "BTC" else 3100, "change": 0}
     return prices
+
 prices = get_crypto_data()
 
 # ======================= CSS =========================
@@ -283,5 +284,4 @@ else:
     elif page == "Bill Pay":
         bill_pay()
 
-st.caption("Private Crytpo Secure Bank -Powered by Truist")
-
+st.caption("Private Secure Crpto-Bank -Powered by Truist")
