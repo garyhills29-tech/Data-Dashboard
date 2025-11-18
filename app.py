@@ -21,32 +21,26 @@ if "crypto" not in st.session_state:
 if "transactions" not in st.session_state:
     st.session_state.transactions = []
 
-# ======================= LIVE PRICES & CHART DATA =========================
+# ======================= LIVE PRICES & CHARTS =========================
 @st.cache_data(ttl=60)
 def get_price_and_chart(coin_id):
     try:
-        # Price
-        price_url = f"https://api.coingecko.com/api/v3/simple/price?ids={coin_id}&vs_currencies=usd&include_24hr_change=true"
-        price = requests.get(price_url).json()[coin_id]["usd"]
-        change = requests.get(price_url).json()[coin_id]["usd_24h_change"]
-        
-        # Chart (30 days)
-        chart_url = f"https://api.coingecko.com/api/v3/coins/{coin_id}/market_chart?vs_currency=usd&days=30&interval=daily"
-        data = requests.get(chart_url).json()["prices"]
-        df = pd.DataFrame(data, columns=["timestamp", "price"])
-        df["date"] = pd.to_datetime(df["timestamp"], unit='ms')
+        price = requests.get(f"https://api.coingecko.com/api/v3/simple/price?ids={coin_id}&vs_currencies=usd&include_24hr_change=true").json()[coin_id]["usd"]
+        change = requests.get(f"https://api.coingecko.com/api/v3/simple/price?ids={coin_id}&vs_currencies=usd&include_24hr_change=true").json()[coin_id]["usd_24h_change"]
+        chart_data = requests.get(f"https://api.coingecko.com/api/v3/coins/{coin_id}/market_chart?vs_currency=usd&days=30").json()["prices"]
+        df = pd.DataFrame(chart_data, columns=["ts", "price"])
+        df["date"] = pd.to_datetime(df["ts"], unit="ms")
         df = df.set_index("date")["price"]
         return price, change, df
     except:
-        fake_df = pd.Series([random.uniform(60000, 70000) for _ in range(30)], index=pd.date_range(end=datetime.now(), periods=30))
-        return 68200, 2.1, fake_df
+        fake = pd.Series([random.uniform(60000, 70000) for _ in range(30)], index=pd.date_range(end=datetime.now(), periods=30))
+        return 68200, 1.8, fake
 
 coin_ids = {"BTC": "bitcoin", "ETH": "ethereum", "SOL": "solana", "DOGE": "dogecoin", "PEPE": "pepe", "GROK": "grok"}
 prices = {}
 charts = {}
 for symbol, cid in coin_ids.items():
-    prices[symbol], change, chart = get_price_and_chart(cid)
-    charts[symbol] = chart
+    prices[symbol], _, charts[symbol] = get_price_and_chart(cid)
 
 # ======================= CSS =========================
 st.markdown("""
@@ -67,7 +61,7 @@ def show_warning(technique):
     st.balloons()
 
 def add_transaction(desc, amount):
-    st.session_state.transactions.insert(0, {"date": datetime.now().strftime("%Y-%m-%d %H:%M"), "desc": desc, "amount": amount})
+    st.session_state.transactions.insert(0, {"date": datetime.now().strftime("%m-%d %H:%M"), "desc": desc, "amount": amount})
 
 # ========================= PAGES =========================
 def login_page():
@@ -75,7 +69,7 @@ def login_page():
     st.text_input("User ID")
     st.text_input("Password", type="password")
     if st.button("Log In", type="primary"):
-        show_warning("Fake Bank Login")
+        show_warning("Fake Bank Login - Credential Harvesting")
         st.session_state.authenticated = True
         st.rerun()
 
@@ -83,12 +77,12 @@ def otp_page():
     st.markdown("<h1 style='text-align:center'>🔐 Security Verification</h1><p style='text-align:center'>Code sent to **--7842</p>", unsafe_allow_html=True)
     st.text_input("Enter code")
     if st.button("Verify", type="primary"):
-        show_warning("2FA Interception")
+        show_warning("2FA / OTP Interception")
         st.session_state.otp_verified = True
         st.rerun()
 
 def crypto_wallet():
-    st.markdown("<h1 style='text-align:center;color:#ffb700'>Crypto Wallet - Live Charts & Trading</h1>", unsafe_allow_html=True)
+    st.markdown("<h1 style='text-align:center;color:#ffb700'>Crypto Wallet - Live Charts</h1>", unsafe_allow_html=True)
     total = 0
     for symbol, amt in st.session_state.crypto.items():
         if amt > 0:
@@ -96,10 +90,9 @@ def crypto_wallet():
             val = amt * price
             total += val
             st.markdown(f"<div class='glass-card'><h3>{symbol} — {amt:,.6f} coins = ${val:,.2f}</h3></div>", unsafe_allow_html=True)
-            st.line_chart(charts[symbol], use_container_width=True, height=300)
-    st.markdown(f"<div class='glass-card'><h2>Total Crypto Value: ${total:188,.2f}</h2></div>", unsafe_allow_html=True)
+            st.line_chart(charts[symbol], use_container_width=True)
+    st.markdown(f"<div class='glass-card'><h2>Total Crypto Value: ${total:,.2f}</h2></div>", unsafe_allow_html=True)
 
-    # Buy/Sell
     col1, col2, col3 = st.columns(3)
     with col1:
         coin = st.selectbox("Coin", list(coin_ids.keys()))
@@ -107,71 +100,11 @@ def crypto_wallet():
         usd = st.number_input("USD Amount", min_value=1.0, value=100.0)
     with col3:
         if st.button("BUY 🟩"):
-            price = prices[coin]
             if usd > st.session_state.checking:
-                st.error("Not enough funds")
+                st.error("Insufficient funds")
             else:
-                bought = usd / price
+                bought = usd / prices[coin]
                 st.session_state.crypto[coin] += bought
                 st.session_state.checking -= usd
                 add_transaction(f"Bought {coin}", -usd)
-                st.success(f"Bought {bought:.6f} {coin}")
-                st.balloons()
-                st.rerun()
-        if st.button("SELL 🟥"):
-            price = prices[coin]
-            max_usd = st.session_state.crypto[coin] * price
-            if usd > max_usd:
-                st.error("Not enough coins")
-            else:
-                sold = usd / price
-                st.session_state.crypto[coin] -= sold
-                st.session_state.checking += usd
-                add_transaction(f"Sold {coin}", +usd)
-                st.success(f"Sold {sold:.6f} {coin}")
-                st.balloons()
-                st.rerun()
-
-def transfer():
-    st.markdown("<h1 style='text-align:center;color:#ffb700'>Transfer Funds</h1>", unsafe_allow_html=True)
-    col1, col2 = st.columns(2)
-    with col1:
-        from_acc = st.selectbox("From", ["Checking", "Savings"])
-    with col2:
-        to_acc = "Savings" if from_acc == "Checking" else "Checking"
-        amount = st.number_input("Amount", min_value=0.01, step=10.0)
-    if st.button("Transfer", type="primary"):
-        from_bal = st.session_state.checking if from_acc == "Checking" else st.session_state.savings
-        if amount > from_bal:
-            st.error("Insufficient funds")
-        else:
-            if from_acc == "Checking":
-                st.session_state.checking -= amount
-                st.session_state.savings += amount
-            else:
-                st.session_state.savings -= amount
-                st.session_state.checking += amount
-            add_transaction(f"Transfer to {to_acc}", amount if to_acc == "Savings" else -amount)
-            st.success("Transfer successful")
-            st.balloons()
-            st.rerun()
-
-def dashboard():
-    st.markdown("<h1 style='text-align:center;color:#ffb700'>Welcome back</h1><p style='text-align:center'><span class='recording-dot'></span> Session recorded</p>", unsafe_allow_html=True)
-    col1, col2 = st.columns(2)
-    with col1:
-        st.metric("Checking", f"${st.session_state.checking:,.2f}")
-        st.metric("Savings", f"${st.session_state.savings:,.2f}")
-    with col2:
-        total_crypto = sum(st.session_state.crypto[c] * prices[c] for c in st.session_state.crypto)
-        st.metric("Crypto Portfolio", f"${total_crypto:,.2f}")
-    st.markdown("<h2 style='color:#ffb700'>Recent Transactions</h2>", unsafe_allow_html=True)
-    if st.session_state.transactions:
-        df = pd.DataFrame(st.session_state.transactions[:10])
-        df["amount"] = df["amount"].apply(lambda x: f"+${x:,.2f}" if x > 0 else f"-${-x:,.2f}")
-        st.dataframe(df, use_container_width=True, hide_index=True)
-
-# ========================= SIDEBAR & ROUTING =========================
-def sidebar():
-    st.sidebar.image("https://raw.githubusercontent.com/ekapujiw2002/truist/main/truist-logo-white.png", width=200)
-    st.sidebar.markdown("<h2 style='color:#ffb700;text-align:center'>CLIENT001</h2>", unsafe_allow
+                st.success
