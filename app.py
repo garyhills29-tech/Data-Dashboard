@@ -32,7 +32,7 @@ if "ocr_reader" not in st.session_state:
 # ======================= LIVE PRICES =========================
 @st.cache_data(ttl=60)
 def get_crypto_data():
-    coins = {"BTC": "bitcoin", "bitcoin", "ETH": "ethereum", "SOL": "solana", "DOGE": "dogecoin", "PEPE": "pepe", "GROK": "grok"}
+    coins = {"BTC": "bitcoin", "ETH": "ethereum", "SOL": "solana", "DOGE": "dogecoin", "PEPE": "pepe", "GROK": "grok"}
     prices = {}
     for symbol, cid in coins.items():
         try:
@@ -41,7 +41,6 @@ def get_crypto_data():
         except:
             prices[symbol] = {"price": 68000 if symbol == "BTC" else 3100, "change": 0}
     return prices
-
 prices = get_crypto_data()
 
 # ======================= CSS =========================
@@ -285,3 +284,4 @@ else:
         bill_pay()
 
 st.caption("Private Crytpo Secure Bank -Powered by Truist")
+
