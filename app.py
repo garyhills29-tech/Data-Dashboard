@@ -118,7 +118,8 @@ def accounts():
     st.markdown("<h1 style='text-align:center'>💳 My Accounts</h1>", unsafe_allow_html=True)
     for acc in [("Premier Checking • ****2847", "$182,340.50"), ("High-Yield Savings • ****5901", "$14,911.32")]:
         st.markdown(f"<div class='glass-card'><h3>{acc[0]}</h3><h2>{acc[1]}</h2></div>", unsafe_allow_html=True)
-   def cards_page():
+   
+def cards_page():
     st.markdown("<h1 style='text-align:center; color:#00c4ff;'>💳 My Cards</h1>", unsafe_allow_html=True)
     st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
 
@@ -187,6 +188,7 @@ elif not st.session_state.otp_verified:
 else:
     current = sidebar()
     {"Dashboard": dashboard, "Accounts": accounts, "Cards": cards_page, "Transfer Funds": transfer, "Messages": messages}.get(current, dashboard)()
+
 
 
 
