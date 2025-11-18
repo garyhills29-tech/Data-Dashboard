@@ -4,6 +4,11 @@ from datetime import datetime
 import random
 import time
 
+# Initialize balances if not already set
+if "checking_balance" not in st.session_state:
+    st.session_state.checking_balance = 12340.50
+if "savings_balance" not in st.session_state:
+    st.session_state.savings_balance = 14911.32
 # ========================= CONFIG =========================
 st.set_page_config(page_title="Truist Online Banking", page_icon="🏦", layout="wide")
 
@@ -105,7 +110,8 @@ def dashboard():
 
 def accounts():
     st.markdown("<h1 style='text-align:center; color:#ffb700'>My Accounts</h1>", unsafe_allow_html=True)
-    for name, bal in [("Premier Checking ••••2847", "$12,340.50"), ("High-Yield Savings ••••5901", "$14,911.32")]:
+    for name, bal in [("Premier Checking ••••2847", f"${st.session_state.checking_balance:,.2f}"),
+                  ("High-Yield Savings ••••5901", f"${st.session_state.savings_balance:,.2f}")]:
         st.markdown(f"<div class='glass-card'><h3>{name}</h3><h2>{bal}</h2></div>", unsafe_allow_html=True)
 
 def cards_page():
@@ -129,12 +135,35 @@ def cards_page():
 def transfer():
     st.markdown("<h1 style='text-align:center; color:#ffb700'>Transfer Funds</h1>", unsafe_allow_html=True)
     st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
+
     st.radio("Type", ["My Accounts", "External", "Zelle"])
     col1, col2 = st.columns(2)
-    with col1: st.selectbox("From", ["Checking ****2847", "Savings ****5901"])
-    with col2: st.selectbox("To", ["Savings ****5901", "External"])
-    st.number_input("Amount", 0.01)
-    if st.button("Send"): st.success("Transfer completed!") ; st.balloons()
+    with col1:
+        from_acct = st.selectbox("From", ["Checking ****2847", "Savings ****5901"])
+    with col2:
+        to_acct = st.selectbox("To", ["Savings ****5901", "External", "Checking ****2847"])
+
+    amount = st.number_input("Amount", 0.01)
+
+    if st.button("Send"):
+        if from_acct == to_acct:
+            st.error("Cannot transfer to the same account.")
+        elif "External" in to_acct:
+            st.success("Transfer to external account completed!")
+            st.balloons()
+        else:
+            # Determine source and destination keys
+            from_key = "checking_balance" if "Checking" in from_acct else "savings_balance"
+            to_key = "savings_balance" if "Savings" in to_acct else "checking_balance"
+
+            if st.session_state[from_key] < amount:
+                st.error("Insufficient funds.")
+            else:
+                st.session_state[from_key] -= amount
+                st.session_state[to_key] += amount
+                st.success(f"Transferred ${amount:,.2f} from {from_acct} to {to_acct}")
+                st.balloons()
+
     st.markdown("</div>", unsafe_allow_html=True)
 
 def messages():
@@ -233,3 +262,4 @@ else:
     elif current == "Messages": messages()
     elif current == "Government Stimulus Center 🇺🇸": irs_stimulus_center()
     else: dashboard()
+
