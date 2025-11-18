@@ -140,6 +140,34 @@ def sidebar():
     return page
 
 # ========================= MAIN =========================
+def accounts():
+    st.markdown("<h1 style='text-align:center; color:#00c4ff;'>💳 My Accounts</h1>", unsafe_allow_html=True)
+    accounts = [
+        {"type": "Premier Checking", "number": "**2847", "balance": "$12,340.50"},
+        {"type": "High-Yield Savings", "number": "**5901", "balance": "$14,911.32"},
+        {"type": "Platinum Credit Card", "number": "**7723", "balance": "$2,300 used of $18,000"},
+    ]
+    for acc in accounts:
+        st.markdown(f"""
+        <div class='glass-card'>
+            <h3>{acc['type']} • {acc['number']}</h3>
+            <h2>{acc['balance']}</h2>
+        </div>
+        """, unsafe_allow_html=True)
+
+def transfer():
+    st.markdown("<h1 style='text-align:center; color:#00c4ff;'>⇄ Transfer Funds</h1>", unsafe_allow_html=True)
+    st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
+    st.radio("Transfer Type", ["Between My Accounts", "To Another Bank", "Zelle / Person"])
+    col1, col2 = st.columns(2)
+    with col1: st.selectbox("From Account", ["Premier Checking ****2847", "Savings ****5901"])
+    with col2: st.selectbox("To Account", ["Savings ****5901", "Chase ****1234 (External)", "John Doe (Zelle)"])
+    st.number_input("Amount ($)", min_value=0.01, value=500.00, step=10.00)
+    st.text_input("Memo (optional)", placeholder="Rent, birthday gift, etc.")
+    if st.button("Review & Send Transfer", type="primary"):
+        st.success("Transfer completed successfully! Confirmation #TRN938471")
+        st.balloons()
+    st.markdown("</div>", unsafe_allow_html=True)
 if not st.session_state.authenticated:
     login_page()
 elif st.session_state.get("is_admin"):
@@ -156,3 +184,4 @@ else:
         st.write("Messages page coming")
     else:
         dashboard()
+
