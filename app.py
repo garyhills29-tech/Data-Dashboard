@@ -43,6 +43,9 @@ for symbol, cid in coin_ids.items():
     prices[symbol], _, charts[symbol] = get_price_and_chart(cid)
 
 # ======================= CSS =========================
+# Add this to show something when not logged in
+if not st.session_state.authenticated and not st.session_state.otp_verified:
+    st.markdown("<div style='text-align:center; padding:100px; color:white; font-size:30px'>🔒 Secure Login Required<br><small>Enter any credentials to continue (educational demo)</small></div>", unsafe_allow_html=True)
 st.markdown("""
 <style>
     .stApp {background: #502b85;}
@@ -108,3 +111,4 @@ def crypto_wallet():
                 st.session_state.checking -= usd
                 add_transaction(f"Bought {coin}", -usd)
                 st.success
+
