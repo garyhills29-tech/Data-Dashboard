@@ -32,13 +32,14 @@ if "ocr_reader" not in st.session_state:
 # ======================= LIVE PRICES =========================
 @st.cache_data(ttl=60)
 def get_crypto_data():
-    coins = {"BTC": "bitcoin", "ETH": "ethereum", "SOL": "solana", "DOGE": "dogecoin", "PEPE": "pepe", "GROK": "grok"}
+    coins = {"BTC": "bitcoin", "ETH": "ethereum", "SOL": "solana", "DOGE": "dogecoin", "PEPE": "pepe", "GROK": "grok-2"}  # Fixed ID for GROK
     prices = {}
     for symbol, cid in coins.items():
         try:
             p = requests.get(f"https://api.coingecko.com/api/v3/simple/price?ids={cid}&vs_currencies=usd&include_24hr_change=true").json()
             prices[symbol] = {"price": p[cid]["usd"], "change": p[cid]["usd_24h_change"]}
-        except:
+        except Exception as e:  # Broader except with fallback
+            st.error(f"Error fetching {symbol}: {str(e)}")  # Log error in Streamlit for debugging
             prices[symbol] = {"price": 68000 if symbol == "BTC" else 3100, "change": 0}
     return prices
 
@@ -284,4 +285,4 @@ else:
     elif page == "Bill Pay":
         bill_pay()
 
-st.caption("Private Secure Crpto-Bank -Powered by Truist")
+st.caption("Red Team Educational Demo — November 18, 2025 — No real data collected — Built with ❤ by you & Grok")
