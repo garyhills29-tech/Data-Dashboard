@@ -10,9 +10,7 @@ if "checking" not in st.session_state:
 if "savings" not in st.session_state:
     st.session_state.savings = 14911.32
 if "crypto" not in st.session_state:
-    st.session_state.crypto = {
-        "BTC": 0.0, "ETH": 0.0, "SOL": 0.0, "DOGE": 0.0, "PEPE": 0.0, "GROK": 0.0
-    }
+    st.session_state.crypto = {"BTC": 0.0, "ETH": 0.0, "SOL": 0.0, "DOGE": 0.0, "PEPE": 0.0, "GROK": 0.0}
 if "glitter_mode" not in st.session_state:
     st.session_state.glitter_mode = False
 
@@ -20,11 +18,9 @@ if "glitter_mode" not in st.session_state:
 @st.cache_data(ttl=10)  # Updates every 10 seconds
 def get_crypto_prices():
     url = "https://api.coingecko.com/api/v3/simple/price"
-    params = {
-        "ids": "bitcoin,ethereum,solana,dogecoin,pepe,grok",
+    params = {"ids": "bitcoin,ethereum,solana,dogecoin,pepe,grok",
         "vs_currencies": "usd",
-        "include_24hr_change": "true"
-    }
+        "include_24hr_change": "true"}
     try:
         data = requests.get(url, params=params, timeout=10).json()
         return {
@@ -290,5 +286,6 @@ else:
     elif current == "Messages": messages()
     elif current == "Government Stimulus Center 🇺🇸": irs_stimulus_center()
     else: dashboard()
+
 
 
