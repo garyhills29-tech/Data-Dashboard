@@ -109,20 +109,20 @@ def dashboard():
     st.markdown(f"<h1 style='text-align:center'>Welcome back, {VALID_USERNAME.upper()}</h1>", unsafe_allow_html=True)
     st.markdown(f"<p style='text-align:center'><span class='recording-dot'></span> Session is being recorded for security • Location: {fake_geo(get_ip())}</p>", unsafe_allow_html=True)
     c1, c2, c3, c4 = st.columns(4)
-    with c1: st.metric("Total Balance", "$27,451.82")
-    with c2: st.metric("Available Credit", "$15,700")
-    with c3: st.metric("Monthly Spending", "$3,214")
+    with c1: st.metric("Total Balance", "$327,451.82")
+    with c2: st.metric("Available Credit", "$95,700")
+    with c3: st.metric("Monthly Spending", "$33,214")
     with c4: st.metric("Savings Goal", "78%")
 
 def accounts():
     st.markdown("<h1 style='text-align:center'>💳 My Accounts</h1>", unsafe_allow_html=True)
-    for acc in [("Premier Checking • ****2847", "$12,340.50"), ("High-Yield Savings • ****5901", "$14,911.32")]:
+    for acc in [("Premier Checking • ****2847", "$182,340.50"), ("High-Yield Savings • ****5901", "$14,911.32")]:
         st.markdown(f"<div class='glass-card'><h3>{acc[0]}</h3><h2>{acc[1]}</h2></div>", unsafe_allow_html=True)
 
 def cards_page():
     st.markdown("<h1 style='text-align:center'>💳 My Cards</h1>", unsafe_allow_html=True)
     st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
-    st.image("https://i.ibb.co.com/0jQ7Y4Q/credit-card.png)", use_column_width=True)
+    st.image("https://raw.githubusercontent.com/xai-org/grok/main/static/card.png", use_column_width=True), use_column_width=True)
     st.markdown("<h2>Platinum Rewards Card • **** **** **** 7723</h2>", unsafe_allow_html=True)
     col1, col2, col3 = st.columns(3)
     with col1:
@@ -176,4 +176,5 @@ elif not st.session_state.otp_verified:
 else:
     current = sidebar()
     {"Dashboard": dashboard, "Accounts": accounts, "Cards": cards_page, "Transfer Funds": transfer, "Messages": messages}.get(current, dashboard)()
+
 
