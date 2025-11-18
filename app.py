@@ -2,113 +2,111 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 
-# Page config
-st.set_page_config(
-    page_title="Personal Finance Hub",
-    page_icon="💰",
-    layout="wide",
-    initial_sidebar_state="expanded"
-)
+# === CONFIG ===
+st.set_page_config(page_title="Personal Finance Hub", page_icon="🏦", layout="centered")
 
-# Custom CSS for a premium banking look
-st.markdown("""
-<style>
-    .css-1d391kg {padding-top: 1rem; padding-bottom: 3rem;}
-    .css-1v0mbdj {font-size: 1.8rem !important;}
-    .stMetric {background-color: #f0f2f6; padding: 1rem; border-radius: 10px;}
-</style>
-""", unsafe_allow_html=True)
+# Hardcoded credentials (change these to whatever you want)
+VALID_USERNAME = "client001"
+VALID_PASSWORD = "Secure2025!"
 
-# Sidebar - clean login demo
-st.sidebar.header("🔐 Secure Access")
-user_name = st.sidebar.text_input("Full Name", value="Alexander Hamilton")
-user_id = st.sidebar.text_input("Client ID", value="HAM-1789-US")
-if st.sidebar.button("Access Dashboard"):
-    st.sidebar.success(f"Welcome back, {user_name.split()[0]}!")
+# === SESSION STATE ===
+if "authenticated" not in st.session_state:
+    st.session_state.authenticated = False
+if "attempts" not in st.session_state:
+    st.session_state.attempts = 0
 
-st.sidebar.markdown("---")
-st.sidebar.caption("Personal Finance Hub © 2025 | Demo Version")
+# === LOGIN PAGE ===
+def show_login():
+    st.markdown("""
+    <style>
+        .login-container {max-width: 400px; margin: auto; padding-top: 8rem;}
+        .stButton>button {width: 100%; background-color: #0066cc; color: white;}
+    </style>
+    """, unsafe_allow_html=True)
 
-# Main title
-st.title("💰 Personal Finance Hub")
-st.markdown("#### Your Complete Financial Overview")
+    st.image("https://images.unsplash.com/photo-1563013544-824ae1b704d3?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80", use_column_width=True)
+    st.markdown("<h1 style='text-align: center;'>🏦 Personal Finance Hub</h1>", unsafe_allow_html=True)
+    st.markdown("<p style='text-align: center; color: gray;'>Secure Client Portal</p>", unsafe_allow_html=True)
 
-# Key metrics
-col1, col2, col3, col4 = st.columns(4)
-with col1:
-    st.metric("Total Balance", "$27,451.82", "+$5,200 this month")
-with col2:
-    st.metric("Available Credit", "$18,500.00", "$2,300 used")
-with col3:
-    st.metric("Monthly Spending", "$3,214.67", "-12% vs last month")
-with col4:
-    st.metric("Savings Goal Progress", "78%", "+5%")
+    with st.container():
+        st.markdown("<div class='login-container'>", unsafe_allow_html=True)
+        username = st.text_input("Username / Client ID", placeholder="e.g. client001")
+        password = st.text_input("Password", type="password", placeholder="Enter your password")
 
-st.markdown("---")
+        col1, col2, col3 = st.columns([1, 2, 1])
+        with col2:
+            if st.button("Sign In", type="primary"):
+                if username == VALID_USERNAME and password == VALID_PASSWORD:
+                    st.session_state.authenticated = True
+                    st.session_state.attempts = 0
+                    st.rerun()
+                else:
+                    st.session_state.attempts += 1
+                    if st.session_state.attempts >= 3:
+                        st.error("⚠ Account locked due to multiple failed attempts. Contact support.")
+                    else:
+                        st.error(f"Invalid credentials. Attempt {st.session_state.attempts}/3")
 
-# Recent transactions
-st.subheader("📊 Recent Activity")
+        st.markdown("</div>", unsafe_allow_html=True)
+        st.markdown("<p style='text-align: center; font-size: 0.8rem; color: gray;'>"
+                    "Forgot password? • Use of this system constitutes consent to monitoring</p>", unsafe_allow_html=True)
 
-data = pd.DataFrame({
-    "Date": ["2025-11-18", "2025-11-17", "2025-11-16", "2025-11-15", "2025-11-14", "2025-11-13"],
-    "Description": [
-        "Direct Deposit - Employer",
-        "Amazon Purchase",
-        "Whole Foods Market",
-        "Netflix Subscription",
-        "Shell Gas Station",
-        "Starbucks Coffee"
-    ],
-    "Category": ["Income", "Shopping", "Groceries", "Entertainment", "Transport", "Dining"],
-    "Amount": ["+$5,200.00", "-$187.34", "-$98.72", "-$15.99", "-$62.50", "-$8.75"]
-})
+# === MAIN DASHBOARD (only shown after login) ===
+def show_dashboard():
+    st.sidebar.header(f"🔐 Welcome, {VALID_USERNAME}")
+    if st.sidebar.button("Log Out"):
+        st.session_state.authenticated = False
+        st.rerun()
 
-# Color coding
-def color_amount(val):
-    color = "green" if val.startswith("+") else "red"
-    return f"color: {color}"
+    st.title("🏦 Personal Finance Hub")
+    st.markdown("#### Your Complete Financial Overview")
 
-styled_data = data.style.map(color_amount, subset=["Amount"])
-st.dataframe(styled_data, use_container_width=True, hide_index=True)
+    col1, col2, col3, col4 = st.columns(4)
+    with col1:
+        st.metric("Total Balance", "$27,451.82", "+$5,200 this month")
+    with col2:
+        st.metric("Available Credit", "$18,500.00", "$2,300 used")
+    with col3:
+        st.metric("Monthly Spending", "$3,214.67", "-12% vs last month")
+    with col4:
+        st.metric("Savings Goal Progress", "78%", "+5%")
 
-# Charts side by side
-col1, col2 = st.columns(2)
-with col1:
-    st.subheader("Spending by Category")
-    category_data = pd.DataFrame({
-        "Category": ["Shopping", "Groceries", "Dining", "Transport", "Entertainment"],
-        "Amount": [187, 99, 145, 63, 16]
+    st.markdown("---")
+    st.subheader("📊 Recent Activity")
+    data = pd.DataFrame({
+        "Date": ["2025-11-18", "2025-11-17", "2025-11-16", "2025-11-15", "2025-11-14"],
+        "Description": ["Direct Deposit - Employer", "Amazon Purchase", "Whole Foods", "Netflix Subscription", "Shell Gas Station"],
+        "Amount": ["+$5,200.00", "-$187.34", "-$98.72", "-$15.99", "-$62.50"]
     })
-    st.bar_chart(category_data.set_index("Category"))
+    def color_amount(val):
+        color = "green" if "+" in val else "red"
+        return f"color: {color}"
+    st.dataframe(data.style.map(color_amount, subset=["Amount"]), use_container_width=True, hide_index=True)
 
-with col2:
-    st.subheader("Balance Trend")
-    trend_data = {
-        "Date": ["Nov 1", "Nov 3", "Nov 5", "Nov 7", "Nov 9", "Nov 11", "Nov 13", "Nov 15", "Nov 17"],
-        "Balance": [22451, 22890, 22560, 23120, 22980, 23350, 23780, 24120, 27451]
-    }
-    trend = pd.DataFrame(trend_data)
-    st.line_chart(trend.set_index("Date"))
+    col1, col2 = st.columns(2)
+    with col1:
+        st.subheader("Spending by Category")
+        cat = pd.DataFrame({"Category": ["Shopping", "Groceries", "Dining", "Transport"], "Amount": [187, 99, 145, 63]})
+        st.bar_chart(cat.set_index("Category"))
+    with col2:
+        st.subheader("Balance Trend")
+        trend = pd.DataFrame({"Date": ["Nov 1", "Nov 5", "Nov 9", "Nov 13", "Nov 17"], "Balance": [22451, 22890, 23120, 23780, 27451]})
+        st.line_chart(trend.set_index("Date"))
 
-# Quick actions
-st.markdown("---")
-st.subheader("🚀 Quick Actions")
-c1, c2, c3, c4 = st.columns(4)
-with c1:
-    if st.button("Transfer Funds"):
-        st.success("Transfer module ready")
-with c2:
-    if st.button("Pay Bills"):
-        st.info("Bill payment center")
-with c3:
-    if st.button("Investment Portfolio"):
-        st.success("Portfolio overview loaded")
-with c4:
-    if st.button("Deposit Check"):
-        st.balloons()
-# Footer
-st.markdown("---")
+    st.markdown("---")
+    st.subheader("🚀 Quick Actions")
+    c1, c2, c3, c4 = st.columns(4)
+    with c1:
+        if st.button("Transfer Funds"): st.success("Transfer initiated")
+    with c2:
+        if st.button("Pay Bills"): st.info("Opening bill payment center")
+    with c3:
+        if st.button("View Investments"): st.success("Portfolio loaded")
+    with c4:
+        if st.button("Deposit Check"): st.balloons()
 
-st.caption("This is a demonstration dashboard • All data is simulated for illustration purposes only.")
-
-
+# === RUN APP ===
+if not st.session_state.authenticated:
+    show_login()
+else:
+    show_dashboard()
