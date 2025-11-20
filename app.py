@@ -198,13 +198,13 @@ def dashboard():
     with c4: st.metric("Savings Goal", "78%")
     c5, c6 = st.columns(2)
 
-    account_pie_df = pd.DataFrame({
+    account_bar_df = pd.DataFrame({
         "Account": ["Checking", "Savings"],
         "Amount": [st.session_state.checking_balance, st.session_state.savings_balance]
     }).set_index("Account")
     with c5:
         st.markdown("#### Asset Distribution")
-        st.bar_chart(account_pie_df)
+        st.bar_chart(account_bar_df)
 
     spending_year = {
         "Food & Dining": 3600,
@@ -468,7 +468,6 @@ def transaction_history():
 
         filtered_df = df[mask]
         st.dataframe(filtered_df)
-
         st.download_button("Download Transactions CSV",
                            filtered_df.to_csv(index=False),
                            file_name="privateglory_transactions.csv")
@@ -533,6 +532,7 @@ def sidebar():
         st.rerun()
     return page
 
+# ====== MAIN APP LOGIC ======
 if not st.session_state.authenticated:
     login_page()
 elif st.session_state.is_admin:
