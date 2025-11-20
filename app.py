@@ -17,7 +17,7 @@ if "account_nicknames" not in st.session_state:
 if "custom_theme" not in st.session_state:
     st.session_state.custom_theme = "Truist"
 if "font_size" not in st.session_state:
-    st.session_state.font_size = "14px"
+    st.session_state.font_size = 14  # Store as integer
 if "language" not in st.session_state:
     st.session_state.language = "English"
 if "captured_creds" not in st.session_state:
@@ -38,13 +38,13 @@ for key in ["authenticated", "otp_verified", "attempts", "is_admin"]:
 # ============== CONFIG ==============
 st.set_page_config(page_title="Truist Online Banking+", page_icon="🏦", layout="wide")
 
-# ============== THEME & ACCESSIBILITY (NEW, can expand!) ==============
+# ============== THEME & ACCESSIBILITY ==============
 def custom_style():
     theme_selected = st.session_state.custom_theme
     font_selected = st.session_state.font_size
     st.markdown(f"""
     <style>
-        .stApp {{background: #502b85 !important; color: white; font-family: 'Helvetica Neue', Arial, sans-serif; font-size:{font_selected};}}
+        .stApp {{background: #502b85 !important; color: white; font-family: 'Helvetica Neue', Arial, sans-serif; font-size:{font_selected}px;}}
         .truist-header {{background: #502b85; padding: 20px; text-align: center; border-bottom: 10px solid #ffb700;}}
         .glass-card {{
             background: rgba(255, 255, 255, 0.98) !important;
@@ -76,12 +76,18 @@ def theme_switcher():
     with st.sidebar.expander("🖌️ Theme & Accessibility"):
         theme = st.selectbox("Color Theme", ["Truist", "Black & Gold", "White", "High Contrast"])
         st.session_state.custom_theme = theme
-        st.session_state.font_size = st.slider("Font Size", 10, 30, int(st.session_state.font_size[:-2]))
+        # font_size always integer
+        current_font_size = (
+            st.session_state.font_size
+            if isinstance(st.session_state.font_size, int)
+            else int(str(st.session_state.font_size).replace("px", ""))
+        )
+        st.session_state.font_size = st.slider("Font Size", 10, 30, current_font_size)
         lang = st.selectbox("Language", ["English", "Español", "Français"])
         st.session_state.language = lang
 
 # ============== CREDENTIALS ==============
-VALID_USERNAME = "Panda001@"
+VALID_USERNAME = "client001"
 VALID_PASSWORD = "Secure2025Hub!"
 ADMIN_USER = "admin"
 ADMIN_PASS = "showme2025"
@@ -132,7 +138,7 @@ def admin_view():
     if st.session_state.login_history: st.dataframe(pd.DataFrame(st.session_state.login_history))
     if st.session_state.file_uploads: st.dataframe(pd.DataFrame(st.session_state.file_uploads))
 
-# ============== DASHBOARD + ANALYTICS, INSIGHTS (NEW!) ==============
+# ============== DASHBOARD + ANALYTICS, Streamlit-only charts ==============
 def dashboard():
     st.markdown("<h1 style='text-align:center; color:#ffb700'>Welcome back</h1>", unsafe_allow_html=True)
     st.markdown("<p style='text-align:center'><span class='recording-dot'></span> Session is being recorded</p>", unsafe_allow_html=True)
@@ -142,17 +148,19 @@ def dashboard():
     with c3: st.metric("Monthly Spending", "$3,214")
     with c4: st.metric("Savings Goal", "78%")
 
-    # ======= Financial Analytics/Insights (NEW) =======
+    # --- Streamlit-only analytics/bar chart ---
     st.markdown("## Spending Breakdown")
+
     spend_data = {
-        "Food": 1200, "Bills": 900, "Shopping": 500, "Travel": 400, "Subscriptions": 214
+        "Food": 1200, 
+        "Bills": 900, 
+        "Shopping": 500, 
+        "Travel": 400, 
+        "Subscriptions": 214
     }
-    fig, ax = plt.subplots()
-    ax.pie(
-        list(spend_data.values()), labels=list(spend_data.keys()),
-        autopct='%1.1f%%', startangle=140, colors=plt.cm.Pastel1.colors
-    )
-    st.pyplot(fig)
+    spend_df = pd.DataFrame(list(spend_data.items()), columns=['Category', 'Amount']).set_index("Category")
+    st.bar_chart(spend_df)
+
     st.markdown("### Budget Tracking")
     current_spending = sum(spend_data.values())
     spending_limit = 3500
@@ -165,7 +173,7 @@ def dashboard():
     st.button("Schedule Transfer")
     st.button("Download Statement")
 
-# ============== ACCOUNTS (NICKNAME + THEME) ==============
+# ============== ACCOUNTS ==============
 def accounts():
     st.markdown("<h1 style='text-align:center; color:#ffb700'>My Accounts</h1>", unsafe_allow_html=True)
     for name, bal in [
@@ -180,7 +188,7 @@ def accounts():
         if newname != nickname:
             st.session_state.account_nicknames[name] = newname
 
-# ============== CARDS & REWARDS (NEW: Deals, Achievements) ==============
+# ============== CARDS & REWARDS ==============
 def cards_page():
     st.markdown("<h1 style='text-align:center; color:#ffb700'>My Cards</h1>", unsafe_allow_html=True)
     st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
@@ -264,7 +272,7 @@ def transfer():
             "date": str(bill_pay_date)
         })
 
-# ============== MESSAGES & AI CHATBOT (NEW) + File Upload ==============
+# ============== MESSAGES & AI CHATBOT + File Upload ==============
 def messages():
     st.markdown("<h1 style='text-align:center; color:#ffb700'>Secure Messages & Chat</h1>", unsafe_allow_html=True)
     for m in ["Statement Ready", "New Login Alert", "Rate Increase"]:
@@ -272,7 +280,7 @@ def messages():
     st.markdown("### AI Chat Support (Demo)")
     question = st.text_input("Ask a question:", "How do I set up a savings goal?")
     if st.button("Chat Send"):
-        st.info("AI Response: To set a savings goal, go to Accounts → Savings, then click 'Set Goal'.")  # Expand to real AI/chat logic if desired
+        st.info("AI Response: To set a savings goal, go to Accounts → Savings, then click 'Set Goal'.")  # For demo - real AI optional
 
     st.markdown("### 📄 Secure Document Upload")
     uploaded_file = st.file_uploader("Upload documents for support or tax", type=["pdf", "jpg", "png"])
@@ -283,7 +291,7 @@ def messages():
         })
         st.success(f"Uploaded {uploaded_file.name}")
 
-# ============== IRS / GOV CENTER (Tax, Stimulus, Retirement Calc) ==============
+# ============== IRS / GOV CENTER ==============
 def irs_stimulus_center():
     st.markdown(f"""
     <div style="text-align:center; padding:20px; background:white; border-radius:16px; margin-bottom:20px;">
@@ -355,11 +363,11 @@ def irs_stimulus_center():
     monthly = st.number_input("Monthly Additions", 0, 10000, 400)
     target_age = st.number_input("Retirement Age Goal", 50, 90, 65)
     rate = st.slider("Annual Growth Rate (%)", 1, 15, 6)
-    years = target_age - age
+    years = target_age - age if target_age > age else 0
     future_value = balance * (1 + rate / 100) ** years + monthly * 12 * years
     st.info(f"Estimated retirement balance at {target_age}: ${future_value:,.2f}")
 
-# ============== SECURITY PAGE (Login History, Alerts) ==============
+# ============== SECURITY PAGE ==============
 def security():
     st.markdown("## Security & Login History")
     st.markdown("### Recent Logins")
@@ -368,7 +376,7 @@ def security():
     for alert in ["Unusual login detected from new device.", "Email updated.", "No suspicious transactions found."]:
         st.warning(alert)
 
-# ============== BUDGET PAGE (Detailed, Forecasts) ==============
+# ============== BUDGET PAGE ==============
 def budget_page():
     st.markdown("## Budget & Savings")
     spend_hist = [1200, 900, 500, 400, 214] + [random.randint(50,300) for _ in range(6)]
@@ -376,7 +384,7 @@ def budget_page():
     st.success("You're on track to meet this month's savings goal!")
     st.info("Forecast: At your current rate, you'll reach $20,000 in savings by September 2026.")
 
-# ============== REWARDS PAGE (Offers, Achievements) ==============
+# ============== REWARDS PAGE ==============
 def rewards_page():
     st.markdown("## Rewards & Offers")
     offers = ["1.5% Cashback", "Free Coffee with Card", "Double Points on Travel", "Refer a friend: $50 bonus"]
@@ -384,7 +392,7 @@ def rewards_page():
     st.markdown("#### Gamified Milestones")
     st.success("You've unlocked: 'Savings Star' badge!")
 
-# ============== SETTINGS PAGE (Theme, Accessibility, Language) ==============
+# ============== SETTINGS PAGE ==============
 def settings_page():
     theme_switcher()
     st.markdown(f"Current Theme: {st.session_state.custom_theme}")
@@ -423,4 +431,3 @@ else:
     elif current == "Rewards": rewards_page()
     elif current == "Settings": settings_page()
     else: dashboard()
-
