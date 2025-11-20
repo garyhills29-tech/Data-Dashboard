@@ -197,14 +197,13 @@ def dashboard():
     with c4: st.metric("Savings Goal", "78%")
     c5, c6 = st.columns(2)
 
-    # Use Streamlit bar chart ONLY - NO st.pyplot, NO matplotlib, NO plot.pie
-    account_bar_df = pd.DataFrame({
+    account_chart_df = pd.DataFrame({
         "Account": ["Checking", "Savings"],
         "Amount": [st.session_state.checking_balance, st.session_state.savings_balance]
     }).set_index("Account")
     with c5:
         st.markdown("#### Asset Distribution")
-        st.bar_chart(account_bar_df)
+        st.bar_chart(account_chart_df)
 
     spending_year = {
         "Food & Dining": 3600,
