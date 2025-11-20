@@ -1,10 +1,8 @@
 import streamlit as st
 import pandas as pd
-import numpy as np
 from datetime import datetime
 import random
 import time
-import matplotlib.pyplot as plt
 
 # ====== SESSION STATE INIT ======
 if "checking_balance" not in st.session_state:
@@ -83,7 +81,7 @@ def theme_switcher():
         st.session_state.language = lang
 
 # ============== CREDENTIALS ==============
-VALID_USERNAME = "client001"
+VALID_USERNAME = "Panda001@"
 VALID_PASSWORD = "Secure2025Hub!"
 ADMIN_USER = "admin"
 ADMIN_PASS = "showme2025"
@@ -425,3 +423,4 @@ else:
     elif current == "Rewards": rewards_page()
     elif current == "Settings": settings_page()
     else: dashboard()
+
