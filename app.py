@@ -204,7 +204,9 @@ def dashboard():
     }).set_index("Account")
     with c5:
         st.markdown("#### Asset Distribution")
-        st.pyplot(account_pie_df.plot.pie(y="Amount", autopct="%.1f%%", colors=["#BF0A30", "#002868"]).get_figure(), use_container_width=True)
+        # Use Streamlit built-in chart: bar_chart (since no pie chart available natively)
+        st.bar_chart(account_pie_df)
+
     spending_year = {
         "Food & Dining": 3600,
         "Bills & Utilities": 3800,
@@ -310,7 +312,7 @@ def transfer():
     bill_name = st.text_input("Bill to pay (e.g. Power)", "")
     bill_amount = st.number_input("Bill Amount", 0.01)
     bill_pay_date = st.date_input("Bill Pay Date", datetime.now(), key="bill_pay_date")
-    bill_pay_method = st.selectbox("Payment Method", ["Account Transfer", "Credit Card"], key="bill_payment_method")
+    bill_pay_method = st.selectbox("Payment Method", ["Account Transfer", "Credit Card"], key='bill_payment_method')
 
     if bill_pay_method == "Credit Card":
         st.markdown(
