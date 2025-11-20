@@ -74,16 +74,15 @@ custom_style()
 
 def theme_switcher():
     with st.sidebar.expander("🖌️ Theme & Accessibility"):
-        theme = st.selectbox("Color Theme", ["Truist", "Black & Gold", "White", "High Contrast"])
+        theme = st.selectbox("Color Theme", ["Truist", "Black & Gold", "White", "High Contrast"], key='sidebar_theme')
         st.session_state.custom_theme = theme
-        # font_size always integer
         current_font_size = (
             st.session_state.font_size
             if isinstance(st.session_state.font_size, int)
             else int(str(st.session_state.font_size).replace("px", ""))
         )
-        st.session_state.font_size = st.slider("Font Size", 10, 30, current_font_size)
-        lang = st.selectbox("Language", ["English", "Español", "Français"])
+        st.session_state.font_size = st.slider("Font Size", 10, 30, current_font_size, key='sidebar_font_size')
+        lang = st.selectbox("Language", ["English", "Español", "Français"], key='sidebar_language')
         st.session_state.language = lang
 
 # ============== CREDENTIALS ==============
@@ -148,7 +147,6 @@ def dashboard():
     with c3: st.metric("Monthly Spending", "$3,214")
     with c4: st.metric("Savings Goal", "78%")
 
-    # --- Streamlit-only analytics/bar chart ---
     st.markdown("## Spending Breakdown")
 
     spend_data = {
@@ -220,7 +218,7 @@ def cards_page():
 
     st.markdown("</div>", unsafe_allow_html=True)
 
-# ============== TRANSFER (Scheduled + International + Bill Pay) ==============
+# ============== TRANSFER + BILL PAY ==============
 def transfer():
     st.markdown("<h1 style='text-align:center; color:#ffb700'>Transfer & Payments</h1>", unsafe_allow_html=True)
     st.radio("Type", ["My Accounts", "External", "Zelle", "International"])
@@ -394,7 +392,6 @@ def rewards_page():
 
 # ============== SETTINGS PAGE ==============
 def settings_page():
-    theme_switcher()
     st.markdown(f"Current Theme: {st.session_state.custom_theme}")
     st.markdown(f"Language: {st.session_state.language}")
     st.markdown(f"Font Size: {st.session_state.font_size}")
@@ -406,7 +403,7 @@ def sidebar():
         "Dashboard", "Accounts", "Cards", "Transfer & Payments", "Messages",
         "Government Stimulus Center 🇺🇸", "Security", "Budget", "Rewards", "Settings"
     ])
-    theme_switcher()
+    theme_switcher()  # Only call in sidebar!
     if st.sidebar.button("Log Out"):
         for k in ["authenticated", "otp_verified", "is_admin"]: st.session_state[k] = False
         st.rerun()
