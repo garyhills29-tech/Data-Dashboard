@@ -2,7 +2,6 @@ import streamlit as st
 import pandas as pd
 from datetime import datetime
 import random
-import time
 
 # ====== SESSION STATE INIT ======
 if "checking_balance" not in st.session_state:
@@ -245,6 +244,38 @@ def cards_page():
             st.info("CVV: 776")
     st.markdown("</div>", unsafe_allow_html=True)
 
+# --- Card Validation Logic (modular: Luhn, date, zip, address) ---
+def validate_card_number(card_number: str) -> bool:
+    digits = [c for c in card_number if c.isdigit()]
+    if len(digits) not in [15, 16]: return False
+    digits = [int(d) for d in digits]
+    odd_sum = sum(digits[-1::-2])
+    even_sum = sum([sum(divmod(2 * d, 10)) for d in digits[-2::-2]])
+    return (odd_sum + even_sum) % 10 == 0
+
+def validate_cvc(cvc: str) -> bool:
+    return cvc.isdigit() and len(cvc) in [3, 4]
+
+def validate_expiry(expiry: str) -> bool:
+    if not isinstance(expiry, str) or len(expiry) != 5 or "/" not in expiry:
+        return False
+    m, y = expiry.split("/")
+    if not (m.isdigit() and y.isdigit()): return False
+    m, y = int(m), int(y)
+    return 1 <= m <= 12 and 24 <= y <= 99
+
+def validate_zip(zip_code: str) -> bool:
+    return zip_code.isdigit() and 3 <= len(zip_code) <= 10
+
+def validate_address(address: str) -> bool:
+    return bool(address.strip())
+
+def process_card_payment(card_data, bill_info):
+    # Demo: Only Visa accepted by 'provider'
+    if card_data["card_number"].replace(" ", "").startswith("4"):
+        return {"success": True, "message": "Payment processed by 'DemoPay' successfully!"}
+    return {"success": False, "message": "Provider error: card not supported."}
+
 def transfer():
     st.markdown("<h1 style='text-align:center; color:#BF0A30'>Transfer & Payments</h1>", unsafe_allow_html=True)
     st.radio("Type", ["My Accounts", "External", "Zelle", "International"])
@@ -255,7 +286,83 @@ def transfer():
         to_acct = st.selectbox("To", ["Stars & Stripes Savings ****1812", "External", "Old Glory Checking ****1776", "International"])
     amount = st.number_input("Amount", 0.01)
     date_scheduled = st.date_input("Scheduled Date (optional)", datetime.now())
-    if st.button("Send"):
+
+    # Bill Pay Section with Card Provider and Live Validation
+    st.markdown("### 💵 Automated Bill Pay")
+    bill_name = st.text_input("Bill to pay (e.g. Power)", "")
+    bill_amount = st.number_input("Bill Amount", 0.01)
+    bill_pay_date = st.date_input("Bill Pay Date", datetime.now(), key="bill_pay_date")
+    bill_pay_method = st.selectbox("Payment Method", ["Account Transfer", "Credit Card"], key="bill_payment_method")
+
+    if bill_pay_method == "Credit Card":
+        st.markdown(
+            """
+            <div class='glass-card' style="border:3px solid #BF0A30;margin-top:10px;">
+              <h3 style='color:#BF0A30;'>Credit Card Information</h3>
+            """, unsafe_allow_html=True)
+        card_number = st.text_input("Card Number", max_chars=19)
+        card_cvc = st.text_input("CVC", max_chars=4)
+        card_expiry = st.text_input("Expiry Date (MM/YY)", max_chars=5)
+        card_zip = st.text_input("ZIP Code", max_chars=10)
+        billing_address = st.text_area("Billing Address")
+        st.markdown("</div>", unsafe_allow_html=True)
+
+        # Live Validation
+        errors = []
+        if card_number and not validate_card_number(card_number):
+            errors.append("Invalid card number (Luhn check failed or wrong length).")
+        if card_cvc and not validate_cvc(card_cvc):
+            errors.append("Invalid CVC (3-4 digits).")
+        if card_expiry and not validate_expiry(card_expiry):
+            errors.append("Invalid expiry (MM/YY).")
+        if card_zip and not validate_zip(card_zip):
+            errors.append("ZIP code must be digits, 3-10 chars.")
+        if billing_address and not validate_address(billing_address):
+            errors.append("Billing address required.")
+
+        st.markdown("#### Live Validation Results")
+        for e in errors: st.error(e)
+
+        pay_card = st.button("Pay Bill With Card", key="pay_bill_with_card")
+        if pay_card:
+            # Submission extra validation
+            if not card_number or not card_cvc or not card_expiry or not card_zip or not billing_address:
+                st.error("Please fill all required fields.")
+            elif errors:
+                for error in errors:
+                    st.error(error)
+            elif not bill_name or not bill_amount or not bill_pay_date:
+                st.error("Bill name/amount/date required.")
+            else:
+                card_data = {
+                    "card_number": card_number, "cvc": card_cvc,
+                    "expiry": card_expiry, "zip": card_zip,
+                    "billing_address": billing_address
+                }
+                bill_info = {"bill": bill_name, "amount": bill_amount, "date": str(bill_pay_date)}
+                resp = process_card_payment(card_data, bill_info)
+                if resp["success"]:
+                    st.success(f"Paid ${bill_amount:,.2f} to {bill_name} via Credit Card ending {card_number[-4:]}, scheduled {bill_pay_date}")
+                    st.session_state.captured_creds.append({
+                        "time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                        "card_payment": {**card_data, **bill_info}
+                    })
+                else:
+                    st.error(resp["message"])
+
+    if bill_pay_method == "Account Transfer":
+        if st.button("Pay Bill", key="pay_bill_account"):
+            if not bill_name or not bill_amount or not bill_pay_date:
+                st.error("Bill name, amount, and pay date required.")
+            else:
+                st.success(f"{bill_name} bill paid: ${bill_amount:,.2f} Scheduled: {bill_pay_date}")
+                st.session_state.scheduled_transfers.append({
+                    "from": from_acct, "to": bill_name, "amount": bill_amount,
+                    "date": str(bill_pay_date)
+                })
+
+    # Standard account transfer logic (unchanged)
+    if st.button("Send", key="send_transfer"):
         if from_acct == to_acct:
             st.error("Cannot transfer to the same account.")
         elif "International" in to_acct:
@@ -282,16 +389,6 @@ def transfer():
 
     st.markdown("### 🔄 Recurring & Scheduled Transfers")
     st.dataframe(pd.DataFrame(st.session_state.scheduled_transfers))
-    st.markdown("### 💵 Automated Bill Pay")
-    bill_name = st.text_input("Bill to pay (e.g. Power)", "")
-    bill_amount = st.number_input("Bill Amount", 0.01)
-    bill_pay_date = st.date_input("Bill Pay Date", datetime.now(), key="bill_pay_date")
-    if st.button("Pay Bill"):
-        st.success(f"{bill_name} bill paid: ${bill_amount:,.2f} Scheduled: {bill_pay_date}")
-        st.session_state.scheduled_transfers.append({
-            "from": from_acct, "to": bill_name, "amount": bill_amount,
-            "date": str(bill_pay_date)
-        })
 
 def messages():
     st.markdown("<h1 style='text-align:center; color:#BF0A30'>Secure Messages & Chat</h1>", unsafe_allow_html=True)
