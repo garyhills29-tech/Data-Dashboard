@@ -197,7 +197,7 @@ def dashboard():
     with c4: st.metric("Savings Goal", "78%")
     c5, c6 = st.columns(2)
 
-    # BAR CHART -- NO PIE, NO MATPLOTLIB, NO ST.PYPLOT
+    # Use Streamlit bar chart ONLY - NO st.pyplot, NO matplotlib, NO plot.pie
     account_bar_df = pd.DataFrame({
         "Account": ["Checking", "Savings"],
         "Amount": [st.session_state.checking_balance, st.session_state.savings_balance]
