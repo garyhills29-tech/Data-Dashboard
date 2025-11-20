@@ -31,7 +31,6 @@ if "file_uploads" not in st.session_state:
     st.session_state.file_uploads = []
 if "transactions" not in st.session_state:
     st.session_state.transactions = []
-
 for key in ["authenticated", "otp_verified", "attempts", "is_admin"]:
     if key not in st.session_state:
         st.session_state[key] = False
@@ -198,6 +197,7 @@ def dashboard():
     with c4: st.metric("Savings Goal", "78%")
     c5, c6 = st.columns(2)
 
+    # BAR CHART -- NO PIE, NO MATPLOTLIB, NO ST.PYPLOT
     account_bar_df = pd.DataFrame({
         "Account": ["Checking", "Savings"],
         "Amount": [st.session_state.checking_balance, st.session_state.savings_balance]
