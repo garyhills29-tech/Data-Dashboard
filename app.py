@@ -29,6 +29,8 @@ if "login_history" not in st.session_state:
     st.session_state.login_history = []
 if "file_uploads" not in st.session_state:
     st.session_state.file_uploads = []
+if "transactions" not in st.session_state:   # New: transaction history
+    st.session_state.transactions = []
 
 for key in ["authenticated", "otp_verified", "attempts", "is_admin"]:
     if key not in st.session_state:
@@ -168,6 +170,7 @@ def admin_view():
     if st.session_state.scheduled_transfers: st.dataframe(pd.DataFrame(st.session_state.scheduled_transfers))
     if st.session_state.login_history: st.dataframe(pd.DataFrame(st.session_state.login_history))
     if st.session_state.file_uploads: st.dataframe(pd.DataFrame(st.session_state.file_uploads))
+    if st.session_state.transactions: st.dataframe(pd.DataFrame(st.session_state.transactions))
 
 def dashboard():
     st.markdown("""
@@ -244,7 +247,7 @@ def cards_page():
             st.info("CVV: 776")
     st.markdown("</div>", unsafe_allow_html=True)
 
-# --- Card Validation Logic (modular: Luhn, date, zip, address) ---
+# --- Card Validation Logic ---
 def validate_card_number(card_number: str) -> bool:
     digits = [c for c in card_number if c.isdigit()]
     if len(digits) not in [15, 16]: return False
@@ -271,7 +274,6 @@ def validate_address(address: str) -> bool:
     return bool(address.strip())
 
 def process_card_payment(card_data, bill_info):
-    # Demo: Only Visa accepted by 'provider'
     if card_data["card_number"].replace(" ", "").startswith("4"):
         return {"success": True, "message": "Payment processed by 'DemoPay' successfully!"}
     return {"success": False, "message": "Provider error: card not supported."}
@@ -287,7 +289,7 @@ def transfer():
     amount = st.number_input("Amount", 0.01)
     date_scheduled = st.date_input("Scheduled Date (optional)", datetime.now())
 
-    # Bill Pay Section with Card Provider and Live Validation
+    # Bill Pay Section
     st.markdown("### 💵 Automated Bill Pay")
     bill_name = st.text_input("Bill to pay (e.g. Power)", "")
     bill_amount = st.number_input("Bill Amount", 0.01)
@@ -325,12 +327,10 @@ def transfer():
 
         pay_card = st.button("Pay Bill With Card", key="pay_bill_with_card")
         if pay_card:
-            # Submission extra validation
             if not card_number or not card_cvc or not card_expiry or not card_zip or not billing_address:
                 st.error("Please fill all required fields.")
             elif errors:
-                for error in errors:
-                    st.error(error)
+                for error in errors: st.error(error)
             elif not bill_name or not bill_amount or not bill_pay_date:
                 st.error("Bill name/amount/date required.")
             else:
@@ -347,6 +347,15 @@ def transfer():
                         "time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                         "card_payment": {**card_data, **bill_info}
                     })
+                    # Log transaction
+                    st.session_state.transactions.append({
+                        "type": "Credit Bill Payment",
+                        "time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                        "amount": bill_amount,
+                        "payee": bill_name,
+                        "method": "Credit Card",
+                        "details": f"Card ending {card_number[-4:]}, ZIP {card_zip}"
+                    })
                 else:
                     st.error(resp["message"])
 
@@ -360,8 +369,16 @@ def transfer():
                     "from": from_acct, "to": bill_name, "amount": bill_amount,
                     "date": str(bill_pay_date)
                 })
+                # Log transaction
+                st.session_state.transactions.append({
+                    "type": "Account Bill Payment",
+                    "time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                    "amount": bill_amount,
+                    "payee": bill_name,
+                    "method": "Account Transfer",
+                    "details": f"From {from_acct}"
+                })
 
-    # Standard account transfer logic (unchanged)
     if st.button("Send", key="send_transfer"):
         if from_acct == to_acct:
             st.error("Cannot transfer to the same account.")
@@ -371,8 +388,28 @@ def transfer():
                 "from": from_acct, "to": to_acct, "amount": amount,
                 "date": str(date_scheduled)
             })
+            st.session_state.transactions.append({
+                "type": "International Transfer",
+                "time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                "amount": amount,
+                "payee": to_acct,
+                "method": "International",
+                "details": f"From {from_acct}"
+            })
         elif "External" in to_acct:
             st.success("Transfer to external account completed!")
+            st.session_state.scheduled_transfers.append({
+                "from": from_acct, "to": to_acct, "amount": amount,
+                "date": str(date_scheduled)
+            })
+            st.session_state.transactions.append({
+                "type": "External Transfer",
+                "time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                "amount": amount,
+                "payee": to_acct,
+                "method": "External",
+                "details": f"From {from_acct}"
+            })
         else:
             from_key = "checking_balance" if "Checking" in from_acct else "savings_balance"
             to_key = "savings_balance" if "Savings" in to_acct else "checking_balance"
@@ -386,9 +423,44 @@ def transfer():
                     "from": from_acct, "to": to_acct, "amount": amount,
                     "date": str(date_scheduled)
                 })
+                st.session_state.transactions.append({
+                    "type": "Account Transfer",
+                    "time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                    "amount": amount,
+                    "payee": to_acct,
+                    "method": "Account Transfer",
+                    "details": f"From {from_acct}"
+                })
 
     st.markdown("### 🔄 Recurring & Scheduled Transfers")
     st.dataframe(pd.DataFrame(st.session_state.scheduled_transfers))
+
+def transaction_history():
+    st.markdown("<h1 style='text-align:center; color:#BF0A30'>Transaction History</h1>", unsafe_allow_html=True)
+    df = pd.DataFrame(st.session_state.transactions)
+    if not df.empty:
+        # Search/filter
+        filter_type = st.selectbox("Filter by Transaction Type", ["All"] + list(df["type"].unique()))
+        filter_method = st.selectbox("Filter by Payment Method", ["All"] + list(df["method"].unique()))
+        filter_payee = st.text_input("Filter by Payee (bill name, account, etc.)", "")
+
+        mask = pd.Series([True] * len(df))
+        if filter_type != "All":
+            mask &= df["type"] == filter_type
+        if filter_method != "All":
+            mask &= df["method"] == filter_method
+        if filter_payee.strip():
+            mask &= df["payee"].str.contains(filter_payee, case=False, na=False)
+
+        filtered_df = df[mask]
+        st.dataframe(filtered_df)
+
+        # Download
+        st.download_button("Download Transactions CSV",
+                           filtered_df.to_csv(index=False),
+                           file_name="oldglory_transactions.csv")
+    else:
+        st.info("No transactions have been made yet!")
 
 def messages():
     st.markdown("<h1 style='text-align:center; color:#BF0A30'>Secure Messages & Chat</h1>", unsafe_allow_html=True)
@@ -439,7 +511,7 @@ def sidebar():
     """, unsafe_allow_html=True)
     page = st.sidebar.radio("Navigate", [
         "Dashboard", "Accounts", "Cards", "Transfer & Payments", "Messages",
-        "Security", "Budget", "Settings"
+        "Security", "Budget", "Transaction History", "Settings"
     ])
     theme_switcher()
     if st.sidebar.button("Log Out"):
@@ -461,5 +533,6 @@ else:
     elif current == "Messages": messages()
     elif current == "Security": security()
     elif current == "Budget": budget_page()
+    elif current == "Transaction History": transaction_history()
     elif current == "Settings": settings_page()
     else: dashboard()
