@@ -64,12 +64,13 @@ if "tx" not in state:
     txs.sort(key=lambda x: x["date"], reverse=True)
     state.tx = txs
 
-st.set_page_config(page_title="Private Glory Bank", page_icon="Eagle", layout="wide")
-
-# ==================== SOPHISTICATED 2025 BANK UI ====================
-EAGLE = "https://i.ibb.co/4pQ8Y3D/eagle-gold-real.png"
+# <<< NEW LOGO: Bank of America style >>> 
+BOA_LOGO = "https://i.ibb.co/3rW3Qxz/bank-america-like-logo.png"
 FDIC = "https://i.ibb.co/0jF3Y7Q/fdic-ssl.png"
 
+st.set_page_config(page_title="Private Glory Bank", page_icon="🏦", layout="wide")
+
+# ==================== SOPHISTICATED 2025 BANK UI ====================
 st.markdown(f"""
 <style>
     .stApp {{background: #f8f9fc; color: #1a1a1a; font-family: 'Helvetica Neue', sans-serif;}}
@@ -94,7 +95,7 @@ st.markdown(f"""
 def header():
     st.markdown(f'''
     <div class="header">
-        <img src="{EAGLE}" width="180">
+        <img src="{BOA_LOGO}" width="180">
         <h1 style="color:white;font-size:3.2rem;margin:10px 0 0 0;font-weight:300;">PRIVATE GLORY BANK</h1>
         <p style="color:#e8c66a;font-size:1.2rem;margin:8px 0 0 0;">Secure • Modern • American Banking</p>
     </div>
@@ -223,7 +224,7 @@ def admin():
 
 # ==================== SIDEBAR ====================
 def sidebar():
-    st.sidebar.markdown(f'<img src="{EAGLE}" width="100">', unsafe_allow_html=True)
+    st.sidebar.markdown(f'<img src="{BOA_LOGO}" width="100">', unsafe_allow_html=True)
     return st.sidebar.radio("Menu", ["Dashboard", "Transfer", "Messages", "Logout"])
 
 # ==================== MAIN FLOW ====================
