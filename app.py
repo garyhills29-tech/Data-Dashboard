@@ -204,7 +204,7 @@ def dashboard():
     }).set_index("Account")
     with c5:
         st.markdown("#### Asset Distribution")
-        # Use Streamlit built-in chart: bar_chart (since no pie chart available natively)
+        # FIXED: Use Streamlit built-in bar_chart instead of st.pyplot pie chart
         st.bar_chart(account_pie_df)
 
     spending_year = {
