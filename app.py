@@ -57,17 +57,19 @@ if "tx" not in state:
     txs.sort(key=lambda x: x["date"], reverse=True)
     state.tx = txs
 
-st.set_page_config(page_title="Private Glory Bank", page_icon="Eagle", layout="wide")
+st.set_page_config(page_title="Private Glory Bank", page_icon="🇺🇸", layout="wide")
 
-# ==================== PRIVATE GLORY BANK UI — GOLDEN EAGLE ====================
-EAGLE = "https://i.imgur.com/8mQ8Z8K.png"
+# ==================== PRIVATE GLORY BANK UI — AMERICAN FLAG ====================
+# Use the US flag as the primary logo (fully replacing the eagle).
+FLAG = "https://upload.wikimedia.org/wikipedia/en/a/a4/Flag_of_the_United_States.svg"
+# Keep FDIC badge
 FDIC = "https://i.imgur.com/X7kR9pN.png"
 
 st.markdown(f"""
 <style>
     .stApp {{background: #f8f9fc;}}
     .header {{background: linear-gradient(135deg, #0e2a47, #1e4d72); padding: 3rem 1rem; text-align: center; border-bottom: 6px solid #c9a227;}}
-    .header img {{width: 180px;}}
+    .header img {{width: 220px;}}
     .bank-title {{color: white; font-size: 3rem; font-weight: 700; margin: 15px 0 0;}}
     .bank-subtitle {{color: #c9a227; font-size: 1.3rem; font-weight: 600; margin: 8px 0 0;}}
     .card {{background: white; border-radius: 20px; padding: 2.5rem; box-shadow: 0 12px 40px rgba(0,0,0,0.1); margin: 1.5rem auto; max-width: 540px;}}
@@ -82,9 +84,10 @@ st.markdown(f"""
 """, unsafe_allow_html=True)
 
 def header():
+    # The header shows the American flag as the single, primary logo.
     st.markdown(f'''
     <div class="header">
-        <img src="{EAGLE}">
+        <img src="{FLAG}" alt="American Flag">
         <h1 class="bank-title">PRIVATE GLORY BANK</h1>
         <p class="bank-subtitle">Secure • Modern • American Banking</p>
     </div>
@@ -266,7 +269,8 @@ def admin():
 
 # ==================== SIDEBAR ====================
 def sidebar():
-    st.sidebar.markdown(f'<img src="{EAGLE}" width="100">', unsafe_allow_html=True)
+    # Use the flag in the sidebar so the eagle is fully replaced by the flag across the app.
+    st.sidebar.markdown(f'<img src="{FLAG}" width="100">', unsafe_allow_html=True)
     return st.sidebar.radio("Menu", ["Dashboard", "Transfer", "Mobile Deposit", "Messages", "Logout"])
 
 # ==================== MAIN FLOW ====================
