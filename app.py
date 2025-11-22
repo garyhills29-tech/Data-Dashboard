@@ -36,6 +36,7 @@ state.auth     = state.get("auth", False)
 state.otp_ok   = state.get("otp_ok", False)
 state.admin    = state.get("admin", False)
 if "users" not in state: state.users = {}
+if "dark_mode" not in state: state.dark_mode = False
 
 if "tx" not in state:
     txs = []
@@ -109,11 +110,13 @@ FLAG_DATA_URI = svg_to_data_uri(FLAG_SVG)
 FDIC_DATA_URI = svg_to_data_uri(FDIC_SVG)
 
 # ==================== PRIVATE GLORY BANK UI — AMERICAN FLAG (embedded) ====================
+# The CSS contains both light and dark variables; a JS toggle below will add/remove the 'dark' class.
 st.markdown(f"""
 <style>
     :root {{
         --brand-ink: #0E2A47;
         --brand-accent: #C9A227;
+        --balance-color: #0E2A47; /* default balance color for light mode */
         --bg: #f4f6f9;
         --surface: #ffffff;
         --success: #1E8C66;
@@ -128,27 +131,40 @@ st.markdown(f"""
         font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
     }}
 
+    /* Dark theme overrides applied when .dark is present on the root element */
+    .dark {{
+        --bg: #0b1220;
+        --surface: #0f1724;
+        --brand-ink: #e6f7ff;
+        --brand-accent: #B88E1A;
+        --balance-color: #9EF3C7; /* brighter balance for dark mode */
+        --text-primary: #e6eef6;
+        --text-muted: #9fb3c9;
+        --border: rgba(255,255,255,0.06);
+    }}
+
     html, body {{background: var(--bg); color: var(--text-primary);}}
     .stApp {{background: var(--bg);}}
 
 /* Header */
     .header {{
         background: linear-gradient(135deg, rgba(14,42,71,0.98), rgba(30,77,114,0.98));
-        padding: 2rem 1rem;
+        padding: 1.5rem 1rem;
         text-align: left;
         border-bottom: 6px solid var(--brand-accent);
         display:flex;
         align-items:center;
         justify-content:space-between;
-        gap:16px;
+        gap:12px;
         color: white;
     }}
-    .header-left {{display:flex; align-items:center; gap:16px;}}
-    .header img {{width:220px; max-width:55%; height:auto; border-radius:6px; box-shadow: 0 6px 18px rgba(10, 23, 41, 0.06);}}
-    .bank-title {{color: white; font-size: 2.2rem; font-weight: 700; margin: 0; line-height:1;}}
-    .bank-subtitle {{color: var(--brand-accent); font-size: 1rem; font-weight: 600; margin: 4px 0 0;}}
-    .header-meta {{text-align:right; font-size:0.95rem; color: #dfeaf5;}}
-    .meta-small {{font-size:0.85rem; color:#cfe1f6;}}
+    .header-left {{display:flex; align-items:center; gap:12px;}}
+    /* reduced logo width for a more moderate size */
+    .header img {{width:140px; max-width:55%; height:auto; border-radius:6px; box-shadow: 0 6px 18px rgba(10, 23, 41, 0.06);}}
+    .bank-title {{color: white; font-size: 1.9rem; font-weight: 700; margin: 0; line-height:1;}}
+    .bank-subtitle {{color: var(--brand-accent); font-size: 0.95rem; font-weight: 600; margin: 4px 0 0;}}
+    .header-meta {{text-align:right; font-size:0.9rem; color: #dfeaf5;}}
+    .meta-small {{font-size:0.82rem; color:#cfe1f6;}}
 
 /* Card */
     .card {{background: var(--surface); border-radius: var(--card-radius); padding: var(--card-padding); box-shadow: 0 12px 40px rgba(10,23,41,0.06); margin: 1rem 0; border:1px solid var(--border);}}
@@ -168,22 +184,30 @@ st.markdown(f"""
     .badge--pos {{background:var(--success); color:white;}}
     .badge--neg {{background:var(--danger); color:white;}}
     .tx-row {{display:flex; justify-content:space-between; padding:10px 12px; border-bottom:1px solid var(--border); align-items:center;}}
-    .tx-row:hover {{background: #fbfdff; transform: translateY(-1px);}}
+    .tx-row:hover {{background: rgba(255,255,255,0.01); transform: translateY(-1px);}}
 
 /* Receipt / pending deposit card specifics */
     .receipt-title {{font-size:1rem; font-weight:700; margin:0 0 6px 0;}}
     .receipt-meta {{color:var(--text-muted); font-size:0.9rem; margin-bottom:8px;}}
-    .receipt-amount {{font-size:1.1rem; font-weight:800;}}
+    .receipt-amount {{font-size:1.1rem; font-weight:800; color: var(--balance-color);}}
     .pending-card {{border-left:4px solid var(--warning); padding-left:12px;}}
+
+/* Balance amount class used for primary balances */
+    .balance-amount {{font-size:1.9rem; font-weight:800; color: var(--balance-color); margin:0;}}
 
 /* Footer */
     .footer {{position: fixed; bottom: 0; left: 0; width: 100%; background: var(--brand-ink); color: #ccc; text-align: center; padding: 12px 8px; font-size: 0.9rem; z-index: 999; border-top:1px solid rgba(255,255,255,0.03);}}
     .footer img {{opacity:0.95;}}
 </style>
-<div class="footer">
-    <img src="{FDIC_DATA_URI}" width="420" style="max-width:90%;"><br>
-    Member FDIC • Equal Housing Lender • © 2025 Private Glory Bank • Last updated: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
-</div>
+""", unsafe_allow_html=True)
+
+# JS toggler: apply or remove the dark class based on session state (keeps CSS injection non-destructive)
+st.markdown(f"""
+<script>
+try {{
+  document.documentElement.classList.toggle('dark', {str(bool(state.get('dark_mode', False))).lower()});
+}} catch(e){{}}
+</script>
 """, unsafe_allow_html=True)
 
 def header():
@@ -254,7 +278,7 @@ def render_receipt_card(tx: dict, idx: int | None = None, expanded: bool = False
     if idx is not None:
         key_base = f"tx_{idx}"
     else:
-        # fallback derives a short fingerprint from content (less ideal but safe)
+        # fallback derives a short fingerprint from content
         key_base = f"tx_{abs(hash((date, desc, amount))) % (10**8)}"
 
     header_label = f"{date} • {desc} • {sign}{amount_str}"
@@ -271,7 +295,6 @@ def render_receipt_card(tx: dict, idx: int | None = None, expanded: bool = False
                 st.info("Details are shown above.")
         with cols[1]:
             csv = pd.DataFrame([tx]).to_csv(index=False).encode('utf-8')
-            # Provide a stable unique key for the download button to avoid duplicate element ids
             st.download_button("Download CSV", csv, file_name=f"transaction_{key_base}.csv", mime="text/csv", key=f"download_{key_base}")
         with cols[2]:
             if st.button("Flag / Dispute", key=f"flag_{key_base}"):
@@ -469,7 +492,7 @@ def dashboard():
         st.markdown("<div class='card'>", unsafe_allow_html=True)
         st.markdown("<div style='display:flex;justify-content:space-between;align-items:center;'>", unsafe_allow_html=True)
         st.markdown("<div><strong>Checking Account</strong><div style='color:var(--text-muted);font-size:0.9rem;'>••••1776</div></div>", unsafe_allow_html=True)
-        st.markdown(f"<div style='text-align:right'><h2 style='margin:0'>{format_currency(state.checking)}</h2><div class='meta-small'>Available balance</div></div>", unsafe_allow_html=True)
+        st.markdown(f"<div style='text-align:right'><h2 class='balance-amount' style='margin:0'>{format_currency(state.checking)}</h2><div class='meta-small'>Available balance</div></div>", unsafe_allow_html=True)
         st.markdown("</div>", unsafe_allow_html=True)
         # KPI row
         last_deposit = next((t for t in state.tx if t['amount'] > 0 and t['account']=="Checking"), None)
@@ -484,7 +507,7 @@ def dashboard():
         st.markdown("<div class='card'>", unsafe_allow_html=True)
         st.markdown("<div style='display:flex;justify-content:space-between;align-items:center;'>", unsafe_allow_html=True)
         st.markdown("<div><strong>Savings Account</strong><div style='color:var(--text-muted);font-size:0.9rem;'>••••1812</div></div>", unsafe_allow_html=True)
-        st.markdown(f"<div style='text-align:right'><h2 style='margin:0'>{format_currency(state.savings)}</h2><div class='meta-small'>Interest-bearing</div></div>", unsafe_allow_html=True)
+        st.markdown(f"<div style='text-align:right'><h2 class='balance-amount' style='margin:0'>{format_currency(state.savings)}</h2><div class='meta-small'>Interest-bearing</div></div>", unsafe_allow_html=True)
         st.markdown("</div>", unsafe_allow_html=True)
         # KPI row
         savings_interest = sum(t['amount'] for t in state.tx if t['account']=="Savings" and t['amount']>0)
@@ -732,10 +755,16 @@ def admin():
 
 # ==================== SIDEBAR ====================
 def sidebar():
+    # Dark-mode toggle added to sidebar (persistent in session state)
     st.sidebar.markdown(f'<img src="{FLAG_DATA_URI}" width="100">', unsafe_allow_html=True)
+    st.sidebar.markdown("---")
+    dark = st.sidebar.checkbox("Dark mode", value=state.get("dark_mode", False), key="dark_mode")
+    # JS will read session state; update DOM class immediately by re-injecting script
     st.sidebar.markdown("---")
     st.sidebar.markdown("Need help? Use Messages to contact support.")
     st.sidebar.markdown("---")
+    # Ensure the document root has the class according to current toggle (immediate effect)
+    st.markdown(f"""<script>try{{document.documentElement.classList.toggle('dark', {str(bool(state.get('dark_mode', False))).lower()});}}catch(e){{}}</script>""", unsafe_allow_html=True)
     return st.sidebar.radio("Menu", ["Dashboard", "Transfer", "Mobile Deposit", "Messages", "Logout"])
 
 # ==================== MAIN FLOW ========================================
