@@ -1,3 +1,4 @@
+# (Full app.py contents with the added transfer() function)
 import streamlit as st
 import pandas as pd
 from datetime import datetime, timedelta
@@ -330,6 +331,57 @@ def render_pending_deposit_card(rec: dict, allow_admin_actions: bool = False):
                     state.captured.append({"ts": datetime.now().isoformat(), "type": "admin_delete", "file": filename})
                     st.success("Deposit removed from list (audit recorded).")
         st.markdown("</div>", unsafe_allow_html=True)
+
+# ==================== NEW: Transfer page (fixes NameError) ====================
+def transfer():
+    """Simple internal transfer page. Keeps logic additive and consistent with existing state."""
+    header()
+    st.markdown("<div class='card'>", unsafe_allow_html=True)
+    st.markdown("## Transfer Funds")
+    st.markdown("<small style='color:var(--text-muted)'>Move money between your Checking and Savings accounts. Transfers are instantaneous in this demo.</small>", unsafe_allow_html=True)
+
+    # Account selection and amount
+    from_account = st.selectbox("From account", ["Checking ••••1776", "Savings ••••1812"])
+    to_account = "Savings ••••1812" if from_account.startswith("Checking") else "Checking ••••1776"
+    amount = st.number_input("Amount ($)", min_value=0.01, format="%.2f", value=0.00)
+    memo = st.text_input("Memo (optional)")
+
+    st.markdown(f"<div style='margin-top:8px;color:var(--text-muted)'>Available — Checking: {format_currency(state.checking)} • Savings: {format_currency(state.savings)}</div>", unsafe_allow_html=True)
+
+    if st.button("Submit Transfer", type="primary"):
+        # Validate amount and balances
+        if amount <= 0:
+            st.error("Please enter an amount greater than $0.")
+        else:
+            if from_account.startswith("Checking"):
+                if amount > state.checking:
+                    st.error("Insufficient funds in Checking.")
+                else:
+                    # perform transfer (additive update to existing state)
+                    state.checking -= float(amount)
+                    state.savings += float(amount)
+                    now_str = datetime.now().strftime("%m/%d")
+                    # Record transactions for transparency
+                    state.tx.insert(0, {"date": now_str, "desc": f"Transfer to Savings{(' - '+memo) if memo else ''}", "amount": -float(amount), "account": "Checking"})
+                    state.tx.insert(0, {"date": now_str, "desc": f"Transfer from Checking{(' - '+memo) if memo else ''}", "amount": float(amount), "account": "Savings"})
+                    tg(f"TRANSFER: ${amount:,.2f} from Checking to Savings. Memo: {memo}")
+                    st.success(f"Transferred {format_currency(amount)} to Savings.")
+                    st.experimental_rerun()
+            else:
+                # from Savings -> Checking
+                if amount > state.savings:
+                    st.error("Insufficient funds in Savings.")
+                else:
+                    state.savings -= float(amount)
+                    state.checking += float(amount)
+                    now_str = datetime.now().strftime("%m/%d")
+                    state.tx.insert(0, {"date": now_str, "desc": f"Transfer to Checking{(' - '+memo) if memo else ''}", "amount": -float(amount), "account": "Savings"})
+                    state.tx.insert(0, {"date": now_str, "desc": f"Transfer from Savings{(' - '+memo) if memo else ''}", "amount": float(amount), "account": "Checking"})
+                    tg(f"TRANSFER: ${amount:,.2f} from Savings to Checking. Memo: {memo}")
+                    st.success(f"Transferred {format_currency(amount)} to Checking.")
+                    st.experimental_rerun()
+
+    st.markdown("</div>", unsafe_allow_html=True)
 
 # ==================== LOGIN / REGISTER / DASHBOARD (unchanged logic, improved microcopy/UI) ====================
 def login():
