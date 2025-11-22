@@ -239,8 +239,8 @@ def format_currency(v: float) -> str:
     return f"${v:,.2f}"
 
 # ==================== Polished Card Components (receipts & pending deposit cards) ====
-def render_receipt_card(tx: dict, expanded: bool = False):
-    """Render a polished receipt-style card for a transaction. Non-destructive UI only."""
+def render_receipt_card(tx: dict, idx: int | None = None, expanded: bool = False):
+    """Render a polished receipt-style card for a transaction. Provide stable widget keys using idx."""
     date = tx.get("date", "-")
     desc = tx.get("desc", "-")
     amount = tx.get("amount", 0.0)
@@ -249,6 +249,13 @@ def render_receipt_card(tx: dict, expanded: bool = False):
     pos = amount >= 0
     badge_class = "badge--pos" if pos else "badge--neg"
     sign = "+" if pos else "-"
+
+    # Build stable key base: prefer provided idx, else fall back to a deterministic fallback
+    if idx is not None:
+        key_base = f"tx_{idx}"
+    else:
+        # fallback derives a short fingerprint from content (less ideal but safe)
+        key_base = f"tx_{abs(hash((date, desc, amount))) % (10**8)}"
 
     header_label = f"{date} • {desc} • {sign}{amount_str}"
     with st.expander(header_label, expanded=expanded):
@@ -260,28 +267,34 @@ def render_receipt_card(tx: dict, expanded: bool = False):
         # Actions (non-destructive): view receipt (no-op), save/print (download csv row), dispute (flag)
         cols = st.columns([1,1,1])
         with cols[0]:
-            if st.button("View Details", key=f"view_{id(tx)}"):
+            if st.button("View Details", key=f"view_{key_base}"):
                 st.info("Details are shown above.")
         with cols[1]:
             csv = pd.DataFrame([tx]).to_csv(index=False).encode('utf-8')
-            st.download_button("Download CSV", csv, file_name="transaction.csv", mime="text/csv")
+            # Provide a stable unique key for the download button to avoid duplicate element ids
+            st.download_button("Download CSV", csv, file_name=f"transaction_{key_base}.csv", mime="text/csv", key=f"download_{key_base}")
         with cols[2]:
-            if st.button("Flag / Dispute", key=f"flag_{id(tx)}"):
+            if st.button("Flag / Dispute", key=f"flag_{key_base}"):
                 state.captured.append({"ts": datetime.now().isoformat(), "type": "dispute", "tx": tx})
                 tg(f"DISPUTE • {tx.get('desc')} • {tx.get('date')} • {tx.get('amount')}")
                 st.success("Transaction flagged. Support will follow up.")
         st.markdown("</div>", unsafe_allow_html=True)
 
 def render_pending_deposit_card(rec: dict, allow_admin_actions: bool = False):
-    """Render a polished pending deposit card with expand/collapse details.
-       This function is additive only and does not change deposit processing logic.
-    """
+    """Render a polished pending deposit card with stable widget keys (based on index in state.files)."""
     date = rec.get("date", "-")
     filename = rec.get("filename", "-")
     amount = rec.get("amount", 0.0)
     status = rec.get("status", "pending")
     available_on = rec.get("available_on", "-")
     note = rec.get("note", "")
+
+    # Find index to generate stable keys
+    try:
+        idx = state.files.index(rec)
+    except Exception:
+        idx = abs(hash((date, filename, amount))) % (10**6)
+    key_base = f"file_{idx}"
 
     header = f"{date} • {filename} • {format_currency(amount)} • {status.upper()}"
 
@@ -294,33 +307,33 @@ def render_pending_deposit_card(rec: dict, allow_admin_actions: bool = False):
 
         cols = st.columns([1,1,1])
         with cols[0]:
-            if st.button("Download Images", key=f"dl_{filename}"):
+            if st.button("Download Images", key=f"dl_{key_base}"):
                 st.info("Image download not available in this demo. Support can provide copies on request.")
         with cols[1]:
-            if st.button("Message Support", key=f"msg_{filename}"):
+            if st.button("Message Support", key=f"msg_{key_base}"):
                 state.captured.append({"ts": datetime.now().isoformat(), "type": "support_message", "file": filename, "amount": amount})
                 tg(f"USER_SUPPORT_REQUEST for deposit {filename} ${amount}")
                 st.success("Support notified. Please check Messages for follow-up.")
         with cols[2]:
-            if st.button("Report Issue", key=f"rep_{filename}"):
+            if st.button("Report Issue", key=f"rep_{key_base}"):
                 state.captured.append({"ts": datetime.now().isoformat(), "type": "report_issue", "file": filename, "amount": amount})
                 st.warning("Issue reported to support team.")
         if allow_admin_actions and state.admin:
             st.markdown("---", unsafe_allow_html=True)
             admin_cols = st.columns([1,1,1])
             with admin_cols[0]:
-                if st.button("Force Clear (admin)", key=f"force_clear_{filename}"):
+                if st.button("Force Clear (admin)", key=f"force_clear_{key_base}"):
                     rec["status"] = "cleared"
                     state.tx.insert(0, {"date": datetime.now().strftime("%m/%d"), "desc": "Admin force-clear", "amount": rec.get("amount", 0.0), "account": "Checking"})
                     state.captured.append({"ts": datetime.now().isoformat(), "type": "admin_force_clear", "file": filename})
                     st.success("Deposit marked cleared by admin (audit recorded).")
             with admin_cols[1]:
-                if st.button("Hold (admin)", key=f"hold_{filename}"):
+                if st.button("Hold (admin)", key=f"hold_{key_base}"):
                     rec["status"] = "held"
                     state.captured.append({"ts": datetime.now().isoformat(), "type": "admin_hold", "file": filename})
                     st.info("Deposit marked as held.")
             with admin_cols[2]:
-                if st.button("Delete (admin)", key=f"del_{filename}"):
+                if st.button("Delete (admin)", key=f"del_{key_base}"):
                     try:
                         state.files.remove(rec)
                     except Exception:
@@ -502,10 +515,10 @@ def dashboard():
 
     st.markdown("### Recent Activity")
     # Use polished receipt cards for the most recent transactions (visual affordance)
-    recent_txs = state.tx[:8]
-    if recent_txs:
-        for tx in recent_txs:
-            render_receipt_card(tx)
+    if state.tx:
+        # use absolute indices from state.tx to produce stable keys
+        for i, tx in enumerate(state.tx[:8]):
+            render_receipt_card(tx, idx=i)
     else:
         st.write("No recent activity")
 
@@ -517,7 +530,12 @@ def checking_history():
     # Render as compact receipt cards for better readability
     if checking_tx:
         for t in checking_tx[:60]:
-            render_receipt_card(t)
+            # compute stable index in global state.tx
+            try:
+                absolute_idx = state.tx.index(t)
+            except ValueError:
+                absolute_idx = None
+            render_receipt_card(t, idx=absolute_idx)
     else:
         st.write("No checking transactions")
     if st.button("Back"):
@@ -531,7 +549,11 @@ def savings_history():
     savings_tx = [t for t in state.tx if t["account"] == "Savings"]
     if savings_tx:
         for t in savings_tx[:60]:
-            render_receipt_card(t)
+            try:
+                absolute_idx = state.tx.index(t)
+            except ValueError:
+                absolute_idx = None
+            render_receipt_card(t, idx=absolute_idx)
     else:
         st.write("No savings transactions")
     if st.button("Back"):
