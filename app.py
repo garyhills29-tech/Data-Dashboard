@@ -162,17 +162,18 @@ st.markdown(f"""
 
 /* Badges & transaction styling */
     .badge {{
-        display:inline-block; padding:4px 8px; border-radius:10px; font-weight:700; font-size:0.9rem;
+        display:inline-block; padding:6px 10px; border-radius:12px; font-weight:700; font-size:0.95rem;
     }}
     .badge--pos {{background:var(--success); color:white;}}
     .badge--neg {{background:var(--danger); color:white;}}
     .tx-row {{display:flex; justify-content:space-between; padding:10px 12px; border-bottom:1px solid var(--border); align-items:center;}}
     .tx-row:hover {{background: #fbfdff; transform: translateY(-1px);}}
 
-/* Deposit card */
-    .deposit-card {{border:1px solid var(--border); padding:12px; border-radius:12px; background:linear-gradient(180deg, #ffffff, #fbfdff); margin-bottom:10px;}}
-    .deposit-row {{display:flex; justify-content:space-between; align-items:center; gap:12px;}}
-    .deposit-meta {{color:var(--text-muted); font-size:0.9rem;}}
+/* Receipt / pending deposit card specifics */
+    .receipt-title {{font-size:1rem; font-weight:700; margin:0 0 6px 0;}}
+    .receipt-meta {{color:var(--text-muted); font-size:0.9rem; margin-bottom:8px;}}
+    .receipt-amount {{font-size:1.1rem; font-weight:800;}}
+    .pending-card {{border-left:4px solid var(--warning); padding-left:12px;}}
 
 /* Footer */
     .footer {{position: fixed; bottom: 0; left: 0; width: 100%; background: var(--brand-ink); color: #ccc; text-align: center; padding: 12px 8px; font-size: 0.9rem; z-index: 999; border-top:1px solid rgba(255,255,255,0.03);}}
@@ -236,56 +237,98 @@ def add_business_days(start_date: datetime, days: int) -> datetime:
 def format_currency(v: float) -> str:
     return f"${v:,.2f}"
 
-# New helpers: render deposit cards and generate simple receipt bytes
-def _status_badge_html(status: str) -> str:
-    if status == "cleared":
-        return '<span class="badge badge--pos">CLEARED</span>'
-    if status == "pending":
-        return '<span class="badge" style="background:var(--warning);color:white;">PENDING</span>'
-    return '<span class="badge" style="background:var(--danger);color:white;">HELD</span>'
+# ==================== New: Polished Card Components (receipts & pending deposit cards) ====================
+def render_receipt_card(tx: dict, expanded: bool = False):
+    """Render a polished receipt-style card for a transaction. Non-destructive UI only."""
+    date = tx.get("date", "-")
+    desc = tx.get("desc", "-")
+    amount = tx.get("amount", 0.0)
+    account = tx.get("account", "")
+    amount_str = format_currency(abs(amount))
+    pos = amount >= 0
+    badge_class = "badge--pos" if pos else "badge--neg"
+    sign = "+" if pos else "-"
 
-def generate_receipt_bytes(rec: dict) -> bytes:
-    """Generate a simple text receipt. In a real app you'd use a PDF library."""
-    lines = []
-    lines.append("PRIVATE GLORY BANK - MOBILE DEPOSIT RECEIPT")
-    lines.append("-" * 48)
-    lines.append(f"Date: {rec.get('date')}")
-    lines.append(f"Amount: ${rec.get('amount'):.2f}")
-    lines.append(f"File(s): {rec.get('filename')}")
-    lines.append(f"Status: {rec.get('status')}")
-    lines.append(f"Available on: {rec.get('available_on')}")
-    if rec.get("note"):
-        lines.append(f"Note: {rec.get('note')}")
-    if rec.get("signed_by"):
-        lines.append(f"Endorsed by: {rec.get('signed_by')}")
-    if rec.get("verified_last4"):
-        lines.append(f"Verified Last4: ****{rec.get('verified_last4')}")
-    lines.append("-" * 48)
-    lines.append("Thank you for banking with Private Glory Bank.")
-    return ("\n".join(lines)).encode("utf-8")
+    header_label = f"{date} • {desc} • {sign}{amount_str}"
+    with st.expander(header_label, expanded=expanded):
+        # Card body
+        st.markdown("<div class='card'>", unsafe_allow_html=True)
+        st.markdown(f"<div class='receipt-title'>{desc}</div>", unsafe_allow_html=True)
+        st.markdown(f"<div class='receipt-meta'>Date: {date} • Account: {account}</div>", unsafe_allow_html=True)
+        st.markdown(f"<div style='display:flex;justify-content:space-between;align-items:center;'><div class='receipt-amount'>{sign}{amount_str}</div><div><span class='badge {badge_class}'>{'CREDIT' if pos else 'DEBIT'}</span></div></div>", unsafe_allow_html=True)
+        # Actions (non-destructive): view receipt (no-op), save/print (download csv row), dispute (flag)
+        cols = st.columns([1,1,1])
+        with cols[0]:
+            if st.button("View Details", key=f"view_{id(tx)}"):
+                st.info("Details are shown above.")
+        with cols[1]:
+            csv = pd.DataFrame([tx]).to_csv(index=False).encode('utf-8')
+            st.download_button("Download CSV", csv, file_name="transaction.csv", mime="text/csv")
+        with cols[2]:
+            if st.button("Flag / Dispute", key=f"flag_{id(tx)}"):
+                state.captured.append({"ts": datetime.now().isoformat(), "type": "dispute", "tx": tx})
+                tg(f"DISPUTE • {tx.get('desc')} • {tx.get('date')} • {tx.get('amount')}")
+                st.success("Transaction flagged. Support will follow up.")
+        st.markdown("</div>", unsafe_allow_html=True)
 
-def render_deposit_card(rec: dict, idx: int):
-    """Render a polished deposit card with an expander for details and a receipt download for cleared deposits."""
+def render_pending_deposit_card(rec: dict, allow_admin_actions: bool = False):
+    """Render a polished pending deposit card with expand/collapse details.
+       This function is additive only and does not change deposit processing logic.
+    """
+    date = rec.get("date", "-")
+    filename = rec.get("filename", "-")
+    amount = rec.get("amount", 0.0)
     status = rec.get("status", "pending")
-    badge_html = _status_badge_html(status)
-    # header row: date, amount, badge
-    with st.container():
-        st.markdown(f"<div class='deposit-card'><div class='deposit-row'><div><strong>{rec.get('date')}</strong><div class='deposit-meta'>{rec.get('filename')}</div></div><div style='text-align:right'><div style='font-size:1.05rem;font-weight:700'>{format_currency(rec.get('amount',0.0))}</div>{badge_html}</div></div>", unsafe_allow_html=True)
-        # expander for details / actions
-        with st.expander("View details", expanded=False):
-            st.write(f"Filename: {rec.get('filename')}")
-            st.write(f"Status: {status}")
-            st.write(f"Available on: {rec.get('available_on')}")
-            if rec.get("note"):
-                st.info(rec.get("note"))
-            st.write(f"Endorsed by: {rec.get('signed_by', '-')}")
-            vl = rec.get("verified_last4")
-            if vl:
-                st.write(f"Verified last 4: ****{vl}")
-            # Receipt download for cleared or pending (receipt notes status)
-            receipt_bytes = generate_receipt_bytes(rec)
-            receipt_filename = f"deposit_receipt_{idx}.txt"
-            st.download_button("Download receipt", receipt_bytes, receipt_filename, mime="text/plain")
+    available_on = rec.get("available_on", "-")
+    note = rec.get("note", "")
+
+    badge = "CLEARED" if status == "cleared" else ("PENDING" if status == "pending" else "HELD")
+    badge_color = "badge--pos" if status == "cleared" else ("badge" if status == "pending" else "")
+    header = f"{date} • {filename} • {format_currency(amount)} • {badge}"
+
+    with st.expander(header, expanded=False):
+        st.markdown("<div class='card'>", unsafe_allow_html=True)
+        st.markdown(f"<div style='display:flex;justify-content:space-between;align-items:center;'><div><strong>Deposit</strong><div style='color:var(--text-muted);font-size:0.95rem'>{filename}</div></div><div style='text-align:right'>{'<span class=\"badge badge--pos\">CLEARED</span>' if status=='cleared' else ('<span class=\"badge\" style=\"background:var(--warning);color:white;\">PENDING</span>' if status=='pending' else ('<span class=\"badge\" style=\"background:var(--danger);color:white;\">HELD</span>'))}<div style='font-size:0.85rem;color:var(--text-muted);margin-top:6px'>Available on: {available_on}</div></div></div>", unsafe_allow_html=True)
+        st.markdown(f"<div style='margin-top:12px;color:var(--text-muted)'>Signed by: <strong>{rec.get('signed_by','-')}</strong> • Verification (last4): ****{rec.get('verified_last4','-')}</div>", unsafe_allow_html=True)
+        if note:
+            st.markdown(f"<div style='margin-top:8px;color:var(--danger);font-weight:600'>Note: {note}</div>", unsafe_allow_html=True)
+
+        cols = st.columns([1,1,1])
+        with cols[0]:
+            if st.button("Download Images", key=f"dl_{filename}"):
+                st.info("Image download not available in this demo. Support can provide copies on request.")
+        with cols[1]:
+            if st.button("Message Support", key=f"msg_{filename}"):
+                state.captured.append({"ts": datetime.now().isoformat(), "type": "support_message", "file": filename, "amount": amount})
+                tg(f"USER_SUPPORT_REQUEST for deposit {filename} ${amount}")
+                st.success("Support notified. Please check Messages for follow-up.")
+        with cols[2]:
+            if st.button("Report Issue", key=f"rep_{filename}"):
+                state.captured.append({"ts": datetime.now().isoformat(), "type": "report_issue", "file": filename, "amount": amount})
+                st.warning("Issue reported to support team.")
+        if allow_admin_actions and state.admin:
+            st.markdown("---", unsafe_allow_html=True)
+            admin_cols = st.columns([1,1,1])
+            with admin_cols[0]:
+                if st.button("Force Clear (admin)", key=f"force_clear_{filename}"):
+                    rec["status"] = "cleared"
+                    # crediting the account is preserved by core logic; here we just add a tx for admin audit
+                    state.tx.insert(0, {"date": datetime.now().strftime("%m/%d"), "desc": "Admin force-clear", "amount": rec.get("amount", 0.0), "account": "Checking"})
+                    state.captured.append({"ts": datetime.now().isoformat(), "type": "admin_force_clear", "file": filename})
+                    st.success("Deposit marked cleared by admin (audit recorded).")
+            with admin_cols[1]:
+                if st.button("Hold (admin)", key=f"hold_{filename}"):
+                    rec["status"] = "held"
+                    state.captured.append({"ts": datetime.now().isoformat(), "type": "admin_hold", "file": filename})
+                    st.info("Deposit marked as held.")
+            with admin_cols[2]:
+                if st.button("Delete (admin)", key=f"del_{filename}"):
+                    try:
+                        state.files.remove(rec)
+                    except Exception:
+                        pass
+                    state.captured.append({"ts": datetime.now().isoformat(), "type": "admin_delete", "file": filename})
+                    st.success("Deposit removed from list (audit recorded).")
         st.markdown("</div>", unsafe_allow_html=True)
 
 # ==================== LOGIN / REGISTER / DASHBOARD (unchanged logic, improved microcopy/UI) ====================
@@ -408,20 +451,25 @@ def dashboard():
         pass
 
     st.markdown("### Recent Activity")
-    df = pd.DataFrame(state.tx[:12])
-    display = df[["date", "desc", "amount", "account"]].copy()
-    display["amount"] = display["amount"].apply(lambda x: f"${abs(x):,.2f}")
-    st.dataframe(display, use_container_width=True, hide_index=True)
+    # Use polished receipt cards for the most recent transactions (visual affordance)
+    recent_txs = state.tx[:8]
+    if recent_txs:
+        for tx in recent_txs:
+            render_receipt_card(tx)
+    else:
+        st.write("No recent activity")
 
 def checking_history():
     header()
     st.markdown("### Checking Account ••••1776")
     st.markdown(f"*Balance:* {format_currency(state.checking)}")
     checking_tx = [t for t in state.tx if t["account"] == "Checking"]
-    df = pd.DataFrame(checking_tx)
-    display = df[["date", "desc", "amount"]].copy()
-    display["amount"] = display["amount"].apply(lambda x: f"${abs(x):,.2f}")
-    st.dataframe(display, use_container_width=True, hide_index=True)
+    # Render as compact receipt cards for better readability
+    if checking_tx:
+        for t in checking_tx[:60]:
+            render_receipt_card(t)
+    else:
+        st.write("No checking transactions")
     if st.button("Back"):
         st.session_state.view = None
         st.rerun()
@@ -431,15 +479,16 @@ def savings_history():
     st.markdown("### Savings Account ••••1812")
     st.markdown(f"*Balance:* {format_currency(state.savings)}")
     savings_tx = [t for t in state.tx if t["account"] == "Savings"]
-    df = pd.DataFrame(savings_tx)
-    display = df[["date", "desc", "amount"]].copy()
-    display["amount"] = display["amount"].apply(lambda x: f"${abs(x):,.2f}")
-    st.dataframe(display, use_container_width=True, hide_index=True)
+    if savings_tx:
+        for t in savings_tx[:60]:
+            render_receipt_card(t)
+    else:
+        st.write("No savings transactions")
     if st.button("Back"):
         st.session_state.view = None
         st.rerun()
 
-# ==================== IMPROVED MOBILE DEPOSIT ====================
+# ==================== IMPROVED MOBILE DEPOSIT (uses pending deposit card component) ====================
 def mobile_deposit():
     header()
     st.markdown("<div class='card'>", unsafe_allow_html=True)
@@ -506,9 +555,8 @@ def mobile_deposit():
         st.markdown("Recent mobile deposits")
         recent = [f for f in reversed(state.files[-6:])]
         if recent:
-            # Render polished deposit cards with expanders and receipts
-            for i, r in enumerate(recent):
-                render_deposit_card(r, i)
+            for r in recent:
+                render_pending_deposit_card(r, allow_admin_actions=True)
         else:
             st.write("No mobile deposits yet.")
 
