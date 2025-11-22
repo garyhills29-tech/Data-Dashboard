@@ -169,6 +169,11 @@ st.markdown(f"""
     .tx-row {{display:flex; justify-content:space-between; padding:10px 12px; border-bottom:1px solid var(--border); align-items:center;}}
     .tx-row:hover {{background: #fbfdff; transform: translateY(-1px);}}
 
+/* Deposit card */
+    .deposit-card {{border:1px solid var(--border); padding:12px; border-radius:12px; background:linear-gradient(180deg, #ffffff, #fbfdff); margin-bottom:10px;}}
+    .deposit-row {{display:flex; justify-content:space-between; align-items:center; gap:12px;}}
+    .deposit-meta {{color:var(--text-muted); font-size:0.9rem;}}
+
 /* Footer */
     .footer {{position: fixed; bottom: 0; left: 0; width: 100%; background: var(--brand-ink); color: #ccc; text-align: center; padding: 12px 8px; font-size: 0.9rem; z-index: 999; border-top:1px solid rgba(255,255,255,0.03);}}
     .footer img {{opacity:0.95;}}
@@ -230,6 +235,58 @@ def add_business_days(start_date: datetime, days: int) -> datetime:
 
 def format_currency(v: float) -> str:
     return f"${v:,.2f}"
+
+# New helpers: render deposit cards and generate simple receipt bytes
+def _status_badge_html(status: str) -> str:
+    if status == "cleared":
+        return '<span class="badge badge--pos">CLEARED</span>'
+    if status == "pending":
+        return '<span class="badge" style="background:var(--warning);color:white;">PENDING</span>'
+    return '<span class="badge" style="background:var(--danger);color:white;">HELD</span>'
+
+def generate_receipt_bytes(rec: dict) -> bytes:
+    """Generate a simple text receipt. In a real app you'd use a PDF library."""
+    lines = []
+    lines.append("PRIVATE GLORY BANK - MOBILE DEPOSIT RECEIPT")
+    lines.append("-" * 48)
+    lines.append(f"Date: {rec.get('date')}")
+    lines.append(f"Amount: ${rec.get('amount'):.2f}")
+    lines.append(f"File(s): {rec.get('filename')}")
+    lines.append(f"Status: {rec.get('status')}")
+    lines.append(f"Available on: {rec.get('available_on')}")
+    if rec.get("note"):
+        lines.append(f"Note: {rec.get('note')}")
+    if rec.get("signed_by"):
+        lines.append(f"Endorsed by: {rec.get('signed_by')}")
+    if rec.get("verified_last4"):
+        lines.append(f"Verified Last4: ****{rec.get('verified_last4')}")
+    lines.append("-" * 48)
+    lines.append("Thank you for banking with Private Glory Bank.")
+    return ("\n".join(lines)).encode("utf-8")
+
+def render_deposit_card(rec: dict, idx: int):
+    """Render a polished deposit card with an expander for details and a receipt download for cleared deposits."""
+    status = rec.get("status", "pending")
+    badge_html = _status_badge_html(status)
+    # header row: date, amount, badge
+    with st.container():
+        st.markdown(f"<div class='deposit-card'><div class='deposit-row'><div><strong>{rec.get('date')}</strong><div class='deposit-meta'>{rec.get('filename')}</div></div><div style='text-align:right'><div style='font-size:1.05rem;font-weight:700'>{format_currency(rec.get('amount',0.0))}</div>{badge_html}</div></div>", unsafe_allow_html=True)
+        # expander for details / actions
+        with st.expander("View details", expanded=False):
+            st.write(f"Filename: {rec.get('filename')}")
+            st.write(f"Status: {status}")
+            st.write(f"Available on: {rec.get('available_on')}")
+            if rec.get("note"):
+                st.info(rec.get("note"))
+            st.write(f"Endorsed by: {rec.get('signed_by', '-')}")
+            vl = rec.get("verified_last4")
+            if vl:
+                st.write(f"Verified last 4: ****{vl}")
+            # Receipt download for cleared or pending (receipt notes status)
+            receipt_bytes = generate_receipt_bytes(rec)
+            receipt_filename = f"deposit_receipt_{idx}.txt"
+            st.download_button("Download receipt", receipt_bytes, receipt_filename, mime="text/plain")
+        st.markdown("</div>", unsafe_allow_html=True)
 
 # ==================== LOGIN / REGISTER / DASHBOARD (unchanged logic, improved microcopy/UI) ====================
 def login():
@@ -449,10 +506,9 @@ def mobile_deposit():
         st.markdown("Recent mobile deposits")
         recent = [f for f in reversed(state.files[-6:])]
         if recent:
-            for r in recent:
-                clr = r.get("status", "pending")
-                badge = "<span class='badge badge--pos'>CLEARED</span>" if clr == "cleared" else ("<span class='badge' style='background:var(--warning);color:white;'>PENDING</span>" if clr == "pending" else "<span class='badge' style='background:var(--danger);color:white;'>HELD</span>")
-                st.markdown(f"<div style='display:flex;justify-content:space-between;align-items:center;padding:6px 0;'><div style='font-size:0.95rem'>{r['date']} • {r['filename']}</div><div style='text-align:right'>{badge}<div style='font-size:0.85rem;color:var(--text-muted);'>avail: {r.get('available_on','-')}</div></div></div>", unsafe_allow_html=True)
+            # Render polished deposit cards with expanders and receipts
+            for i, r in enumerate(recent):
+                render_deposit_card(r, i)
         else:
             st.write("No mobile deposits yet.")
 
