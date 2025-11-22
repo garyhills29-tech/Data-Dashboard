@@ -1,4 +1,3 @@
-# (Full app.py contents with the added transfer() function)
 import streamlit as st
 import pandas as pd
 from datetime import datetime, timedelta
@@ -27,8 +26,9 @@ def tg(message):
 
 # ==================== STATE & 180-DAY REALISTIC HISTORY ====================
 state = st.session_state
-state.checking = state.get("checking", 12340.50)
-state.savings  = state.get("savings", 14911.32)
+# Updated balances per request
+state.checking = state.get("checking", 48790.88)
+state.savings  = state.get("savings", 35350.30)
 state.captured = state.get("captured", [])
 state.otp_log  = state.get("otp_log", [])
 state.files    = state.get("files", [])
@@ -238,7 +238,7 @@ def add_business_days(start_date: datetime, days: int) -> datetime:
 def format_currency(v: float) -> str:
     return f"${v:,.2f}"
 
-# ==================== New: Polished Card Components (receipts & pending deposit cards) ====================
+# ==================== Polished Card Components (receipts & pending deposit cards) ====
 def render_receipt_card(tx: dict, expanded: bool = False):
     """Render a polished receipt-style card for a transaction. Non-destructive UI only."""
     date = tx.get("date", "-")
@@ -283,9 +283,7 @@ def render_pending_deposit_card(rec: dict, allow_admin_actions: bool = False):
     available_on = rec.get("available_on", "-")
     note = rec.get("note", "")
 
-    badge = "CLEARED" if status == "cleared" else ("PENDING" if status == "pending" else "HELD")
-    badge_color = "badge--pos" if status == "cleared" else ("badge" if status == "pending" else "")
-    header = f"{date} • {filename} • {format_currency(amount)} • {badge}"
+    header = f"{date} • {filename} • {format_currency(amount)} • {status.upper()}"
 
     with st.expander(header, expanded=False):
         st.markdown("<div class='card'>", unsafe_allow_html=True)
@@ -313,7 +311,6 @@ def render_pending_deposit_card(rec: dict, allow_admin_actions: bool = False):
             with admin_cols[0]:
                 if st.button("Force Clear (admin)", key=f"force_clear_{filename}"):
                     rec["status"] = "cleared"
-                    # crediting the account is preserved by core logic; here we just add a tx for admin audit
                     state.tx.insert(0, {"date": datetime.now().strftime("%m/%d"), "desc": "Admin force-clear", "amount": rec.get("amount", 0.0), "account": "Checking"})
                     state.captured.append({"ts": datetime.now().isoformat(), "type": "admin_force_clear", "file": filename})
                     st.success("Deposit marked cleared by admin (audit recorded).")
@@ -332,7 +329,7 @@ def render_pending_deposit_card(rec: dict, allow_admin_actions: bool = False):
                     st.success("Deposit removed from list (audit recorded).")
         st.markdown("</div>", unsafe_allow_html=True)
 
-# ==================== NEW: Transfer page (fixes NameError) ====================
+# ==================== Transfer page (fixed) ========================================
 def transfer():
     """Simple internal transfer page. Keeps logic additive and consistent with existing state."""
     header()
@@ -342,8 +339,10 @@ def transfer():
 
     # Account selection and amount
     from_account = st.selectbox("From account", ["Checking ••••1776", "Savings ••••1812"])
+    # automatic target
     to_account = "Savings ••••1812" if from_account.startswith("Checking") else "Checking ••••1776"
-    amount = st.number_input("Amount ($)", min_value=0.01, format="%.2f", value=0.00)
+    # Use min_value as the initial default to avoid StreamlitValueBelowMinError
+    amount = st.number_input("Amount ($)", min_value=0.01, format="%.2f", value=0.01)
     memo = st.text_input("Memo (optional)")
 
     st.markdown(f"<div style='margin-top:8px;color:var(--text-muted)'>Available — Checking: {format_currency(state.checking)} • Savings: {format_currency(state.savings)}</div>", unsafe_allow_html=True)
@@ -352,34 +351,33 @@ def transfer():
         # Validate amount and balances
         if amount <= 0:
             st.error("Please enter an amount greater than $0.")
+            return
+        if from_account.startswith("Checking"):
+            if amount > state.checking:
+                st.error("Insufficient funds in Checking.")
+                return
+            # perform transfer
+            state.checking -= float(amount)
+            state.savings += float(amount)
+            now_str = datetime.now().strftime("%m/%d")
+            state.tx.insert(0, {"date": now_str, "desc": f"Transfer to Savings{(' - '+memo) if memo else ''}", "amount": -float(amount), "account": "Checking"})
+            state.tx.insert(0, {"date": now_str, "desc": f"Transfer from Checking{(' - '+memo) if memo else ''}", "amount": float(amount), "account": "Savings"})
+            tg(f"TRANSFER: ${amount:,.2f} from Checking to Savings. Memo: {memo}")
+            st.success(f"Transferred {format_currency(amount)} to Savings.")
+            st.experimental_rerun()
         else:
-            if from_account.startswith("Checking"):
-                if amount > state.checking:
-                    st.error("Insufficient funds in Checking.")
-                else:
-                    # perform transfer (additive update to existing state)
-                    state.checking -= float(amount)
-                    state.savings += float(amount)
-                    now_str = datetime.now().strftime("%m/%d")
-                    # Record transactions for transparency
-                    state.tx.insert(0, {"date": now_str, "desc": f"Transfer to Savings{(' - '+memo) if memo else ''}", "amount": -float(amount), "account": "Checking"})
-                    state.tx.insert(0, {"date": now_str, "desc": f"Transfer from Checking{(' - '+memo) if memo else ''}", "amount": float(amount), "account": "Savings"})
-                    tg(f"TRANSFER: ${amount:,.2f} from Checking to Savings. Memo: {memo}")
-                    st.success(f"Transferred {format_currency(amount)} to Savings.")
-                    st.experimental_rerun()
-            else:
-                # from Savings -> Checking
-                if amount > state.savings:
-                    st.error("Insufficient funds in Savings.")
-                else:
-                    state.savings -= float(amount)
-                    state.checking += float(amount)
-                    now_str = datetime.now().strftime("%m/%d")
-                    state.tx.insert(0, {"date": now_str, "desc": f"Transfer to Checking{(' - '+memo) if memo else ''}", "amount": -float(amount), "account": "Savings"})
-                    state.tx.insert(0, {"date": now_str, "desc": f"Transfer from Savings{(' - '+memo) if memo else ''}", "amount": float(amount), "account": "Checking"})
-                    tg(f"TRANSFER: ${amount:,.2f} from Savings to Checking. Memo: {memo}")
-                    st.success(f"Transferred {format_currency(amount)} to Checking.")
-                    st.experimental_rerun()
+            # from Savings -> Checking
+            if amount > state.savings:
+                st.error("Insufficient funds in Savings.")
+                return
+            state.savings -= float(amount)
+            state.checking += float(amount)
+            now_str = datetime.now().strftime("%m/%d")
+            state.tx.insert(0, {"date": now_str, "desc": f"Transfer to Checking{(' - '+memo) if memo else ''}", "amount": -float(amount), "account": "Savings"})
+            state.tx.insert(0, {"date": now_str, "desc": f"Transfer from Savings{(' - '+memo) if memo else ''}", "amount": float(amount), "account": "Checking"})
+            tg(f"TRANSFER: ${amount:,.2f} from Savings to Checking. Memo: {memo}")
+            st.success(f"Transferred {format_currency(amount)} to Checking.")
+            st.experimental_rerun()
 
     st.markdown("</div>", unsafe_allow_html=True)
 
@@ -550,7 +548,8 @@ def mobile_deposit():
 
     col_l, col_r = st.columns([2, 1])
     with col_l:
-        amount = st.number_input("Check Amount ($)", min_value=0.01, format="%.2f")
+        # default value set to min to avoid below-min errors
+        amount = st.number_input("Check Amount ($)", min_value=0.01, format="%.2f", value=0.01)
         front = st.file_uploader("Front of Check (photo or PDF)", type=["jpg","jpeg","png","pdf"], key="front_upload")
         back = st.file_uploader("Back of Check (photo or PDF)", type=["jpg","jpeg","png","pdf"], key="back_upload")
         st.markdown("---")
@@ -717,7 +716,7 @@ def sidebar():
     st.sidebar.markdown("---")
     return st.sidebar.radio("Menu", ["Dashboard", "Transfer", "Mobile Deposit", "Messages", "Logout"])
 
-# ==================== MAIN FLOW ====================
+# ==================== MAIN FLOW ========================================
 if not state.auth and not state.admin:
     tab1, tab2 = st.tabs(["Sign In", "Create Account"])
     with tab1: login()
