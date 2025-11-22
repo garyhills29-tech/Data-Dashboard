@@ -108,8 +108,10 @@ FLAG_DATA_URI = svg_to_data_uri(FLAG_SVG)
 FDIC_DATA_URI = svg_to_data_uri(FDIC_SVG)
 
 # ==================== THEME + UI CSS ====================
-# We'll inject CSS variables for light/dark themes, animated gradient, glass cards and watermark.
-UI_CSS = f"""
+# Build the CSS as a plain template string and substitute only the dynamic pieces to avoid f-string brace issues.
+_theme = st.session_state.get("theme", "Dark")
+
+UI_CSS = """
 <style>
 :root[data-theme="dark"] {
   --bg1: #071427; /* deep navy */
@@ -198,13 +200,15 @@ UI_CSS = f"""
 // Set theme attribute on document root so CSS variables apply
 (function() {
   try {
-    const theme = '{st.session_state.get("theme", "Dark")}'.toLowerCase();
+    const theme = '{THEME}'.toLowerCase();
     document.documentElement.setAttribute('data-theme', theme === 'dark' ? 'dark' : 'light');
   } catch(e) {console.log(e)}
 })();
 </script>
 """
 
+# substitute the two dynamic pieces (FLAG_DATA_URI, THEME) safely
+UI_CSS = UI_CSS.replace("{FLAG_DATA_URI}", FLAG_DATA_URI).replace("{THEME}", _theme)
 st.markdown(UI_CSS, unsafe_allow_html=True)
 
 # Footer with embedded FDIC badge
@@ -498,7 +502,7 @@ def mobile_deposit():
         detected = suggested_amt
         amount_mismatch_note = None
         if detected and abs(detected - amount) > 1.0:
-            amount_mismatch_note = f"Detected ${detected:.2f} in filenames which differs from entered amount ${amount:.2f}.*"
+            amount_mismatch_note = f"Detected ${detected:.2f} in filenames which differs from entered amount ${amount:.2f}."
 
         today = datetime.now()
         if amount <= 200:
