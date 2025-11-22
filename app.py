@@ -1,3 +1,6 @@
+# Full app.py — fixed fallback button keys to prevent StreamlitDuplicateElementId.
+# All original features and flows retained.
+
 import streamlit as st
 import pandas as pd
 from datetime import datetime, timedelta
@@ -357,18 +360,14 @@ def render_receipt_card(tx: dict, idx: str | int | None = None, expanded: bool =
                     st.success("Transaction flagged. Support will follow up.")
             st.markdown("</div>", unsafe_allow_html=True)
     except TypeError:
-        # Fallback rendering without expander key
+        # Fallback rendering without expander key — provide explicit fallback key to avoid duplicates
+        fallback_flag_key = f"flag_fallback_{key_base}"
         st.markdown("<div class='card'>", unsafe_allow_html=True)
         st.markdown(f"**{header_label}**")
         st.markdown(f"<div class='receipt-title'>{desc}</div>", unsafe_allow_html=True)
         st.markdown(f"<div class='receipt-meta'>Date: {date} • Account: {account}</div>", unsafe_allow_html=True)
-        st.markdown(
-            f"<div style='display:flex;justify-content:space-between;align-items:center;'>"
-            f"<div class='receipt-amount'>{sign}{amount_str}</div>"
-            f"<div><span class='badge {badge_class}'>{'CREDIT' if pos else 'DEBIT'}</span></div></div>",
-            unsafe_allow_html=True
-        )
-        if st.button("Flag / Dispute (no-key-fallback)"):
+        st.markdown(f"<div class='receipt-amount'>{sign}{amount_str}</div>", unsafe_allow_html=True)
+        if st.button("Flag / Dispute", key=fallback_flag_key):
             state.captured.append({"ts": datetime.now().isoformat(), "type": "dispute", "tx": tx})
             tg(f"DISPUTE • {tx.get('desc')} • {tx.get('date')} • {tx.get('amount')}")
             st.success("Transaction flagged. Support will follow up.")
@@ -451,10 +450,12 @@ def render_pending_deposit_card(rec: dict, allow_admin_actions: bool = False):
                         st.success("Deposit removed from list (audit recorded).")
             st.markdown("</div>", unsafe_allow_html=True)
     except TypeError:
+        # Fallback with explicit fallback keys to avoid duplicate-element exceptions
+        fallback_msg_key = f"msg_fallback_{key_base}"
         st.markdown("<div class='card'>", unsafe_allow_html=True)
         st.markdown(f"**{header}**")
         st.markdown(f"<div style='margin-top:12px;color:var(--text-muted)'>Signed by: <strong>{rec.get('signed_by','-')}</strong> • Verification (last4): ****{rec.get('verified_last4','-')}</div>", unsafe_allow_html=True)
-        if st.button("Message Support (no-key-fallback)"):
+        if st.button("Message Support", key=fallback_msg_key):
             state.captured.append({"ts": datetime.now().isoformat(), "type": "support_message", "file": filename, "amount": amount})
             tg(f"USER_SUPPORT_REQUEST for deposit {filename} ${amount}")
             st.success("Support notified. Please check Messages for follow-up.")
